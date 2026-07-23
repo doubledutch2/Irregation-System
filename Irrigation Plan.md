@@ -25,7 +25,7 @@ Mature ornamental garden with **spaced** shrubs/trees around a lawn. Water each 
 
 | Option | Flow | Verdict |
 |--------|------|---------|
-| **1 zone — whole garden** | **~120 L/h** (ordered) | **Recommended for you** — pump, pipe and butts all cope |
+| **1 zone — whole garden** | **~240 L/h** (~80 drippers) | **Recommended** — pump, pipe and butts cope |
 | 2 zones — East / West | ~100 L/h each | Only if you later want to water one side alone |
 | 5 zones | ~30–60 L/h each | Unnecessary with drippers |
 
@@ -1148,7 +1148,7 @@ See **§11 ordered table** above. Key ASINs for re-orders/spares:
 |-------|----------|
 | Zones | **1** (whole garden) — fence U-spine east→north→west |
 | Spine routing | **Fence only** — butts → east fence → north fence → west fence (§7b). No pipe on the house |
-| Emitters | **40 PC drippers:** 20× **2 L/h** + 20× **4 L/h** on **4 mm** drops (≤1 m from fence); fit correct orientation |
+| Emitters | **~80 PC drippers** (mix 2 + 4 L/h) on **4 mm** drops; Stage 1 was 40; fit correct orientation |
 | Long runs (~70 m) | OK with 16 mm spine + PC + 1.5 bar at hub |
 | Pump ≫ demand | OK with Presscontrol + reducer; don’t dead-head |
 | Pump position | **On the ground beside the butts** (fixed). Strainer fixed **~30 cm above butt floor**; stop when water falls to strainer |
