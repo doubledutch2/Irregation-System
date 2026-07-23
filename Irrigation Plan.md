@@ -33,11 +33,11 @@ Mature ornamental garden with **spaced** shrubs/trees around a lawn. Water each 
 
 | Check | Number | Limit | OK? |
 |-------|--------|-------|-----|
-| Emitter demand | **~120 L/h** (~2 L/min) | Jet 3000 = **3000 L/h** | Yes — ~4% of pump capacity |
+| Emitter demand | **~240 L/h** (~4 L/min) with ~80 drippers | Jet 3000 = **3000 L/h** | Yes — ~8% of pump capacity |
 | Pressure after reducer | **~1.5 bar** at hub | CETA PC window **~1–3.5 bar** | Yes |
-| Friction (see layout below) | Each fence branch ~**100 L/h** | 16 mm LDPE over ~35–70 m | Yes — same as old “half garden” case |
-| Water per ~60 min run (80 drippers) | **~240 L** | Butts **~800 L** (→~1600 L if expanded) | Yes |
-| Presscontrol / dry-run | **~2 L/min** continuous | Needs real flow, not dead-head | OK — keep network open while watering |
+| Friction (fence U-spine) | ~**240 L/h** on 16 mm over ~55–70 m | PC drippers | OK — **re-cup-test far west** after +40 |
+| Water per ~60 min run | **~240 L** | Butts **~800 L** (→~1600 L if expanded) | ~**3** full runs @ 800 L |
+| Presscontrol / dry-run | **~4 L/min** continuous | Needs real flow, not dead-head | Better than 40-dripper stage |
 
 ### Trade-off (accept this)
 
@@ -55,23 +55,23 @@ If the far west end is weak on test, use **Option B** in §7b (second 16 mm on t
 
 ## 3. Plant count → water budget (single zone)
 
-Counted **drawn plant icons** on the plan (not name labels). Excluded lavender band and cobbles.
+Counted **drawn plant icons** on the plan (not name labels). Excluded lavender band and cobbles. **Install status (Jul 2026):** Stage 1 **40** fitted and working; Stage 2 adding **~40 more** → **~80** total.
 
-| Build (ordered) | Emitters | Flow |
-|-----------------|----------|------|
-| **CETA red 2 L/h** | **20** | **40 L/h** |
-| **CETA black 4 L/h** | **20** | **80 L/h** |
-| **One zone total** | **40** | **~120 L/h** |
+| Build | Emitters | Flow |
+|-------|----------|------|
+| Stage 1 (fitted) | **20× 2 L/h** + **20× 4 L/h** | **~120 L/h** |
+| Stage 2 (adding) | **~+40** (favour **2 L/h** for ground cover / smaller plants) | **~+80–120 L/h** |
+| **Target total** | **~80** | **~240 L/h** |
 
-| Run time | Water used | vs ~800 L store |
-|----------|------------|-----------------|
-| **60 min** | ~**120 L** | Fine |
-| **75 min** | ~**150 L** | Fine (design soak) |
-| **90 min** | ~**180 L** | Fine |
+| Run time @ ~240 L/h | Water used | vs ~800 L store |
+|---------------------|------------|-----------------|
+| **60 min** (chosen) | ~**240 L** | ~**3** runs |
+| **75 min** | ~**300 L** | ~**2–3** runs |
+| **90 min** | ~**360 L** | ~**2** runs |
 
-**Emitter rule of thumb:** **2 L/h** on smaller shrubs/pots · **4 L/h** on larger shrubs/trees.  
-Plants are **≤1 m from the fence** → **50 m of 4 mm** is enough (~1.0–1.2 m per drop).  
-Original drawing count was ~52 plants / ~100 emitters — Stage 1 uses **40 drippers**; add more later if needed.
+**Emitter rule of thumb:** **2 L/h** on smaller shrubs/pots / ground-cover points · **4 L/h** on larger shrubs/trees.  
+Plants are **≤1 m from the fence**. With ~80 drops, budget **~100 m of 4 mm** if Stage 1’s 50 m runs short.  
+CETA PC drippers have a **flow direction** — fit the right way round.
 
 ### Assigning 2 L/h vs 4 L/h (walk-round)
 
@@ -136,7 +136,7 @@ Low flow → less water cooling the pump → it can run warmer. A Presscontrol m
 ```
 Jet 3000 max ──────────── 3000 L/h / 3.5 bar
 After reducer ──────────── ~1.5 bar into the drip network
-Whole garden (1 zone) ─── ~120 L/h  ← ordered design point
+Whole garden (1 zone) ─── ~240 L/h  ← ~80 drippers design point
 ```
 
 ---
@@ -366,7 +366,7 @@ Optional: keep the owned **13 mm flow-control valve** as a manual isolate for ma
 
 ## 5e. Commissioning — prove the hub before finishing drippers
 
-**Install status (Jul 2026):** spine + Gardena fitted; drippers work once oriented correctly (CETA PC — flow direction matters). Cup-test: open 4 mm pours; fitted dripper is a **slow** drip (~2 L/h red ≈ 30–40 ml/min).
+**Install status (Jul 2026):** spine + Gardena + **40 drippers** working (orientation fixed). Adding ~**40 more** (~80 / ~240 L/h). Cup-test: open 4 mm pours; fitted dripper is a **slow** drip (~2 L/h red ≈ 30–40 ml/min). Far-end power still good — re-test after Stage 2.
 
 ### Test order
 
@@ -422,6 +422,71 @@ Rough catchment on the two marked downpipes (plan area of the roof slopes they s
 2. Both downpipes into the bank (or one bank fed by both).  
 3. Overflow to drain when full — don’t flood the patio.  
 4. AJ-SR04M in one butt still represents the whole linked bank.
+
+---
+
+## 5g. Outdoor electrical enclosures
+
+**Outdoor 2-gang weatherproof sockets** (existing):
+
+| Socket | Device |
+|--------|--------|
+| A | **240 V Zigbee** (UpXNBor) — switches pump power |
+| B | **12 V wall wart** — AJ-SR04M / ESP water-butt sensor |
+
+### Layout
+
+```
+Socket A: Zigbee 240 V
+  └─► [IP65 SPLIT BOX] ──┬─► Katsu Presscontrol (mains lead)
+                         ├─► Solenoid coil (→ small electrics box §5d/§5g)
+                         └─► spare gland for later 240 V load
+
+Socket B: 12 V PSU
+  └─► [IP65 SENSOR BOX] ──► ESP + AJ-SR04M (~12×16×8 cm board)
+```
+
+Keep **240 V** and **12 V** in **separate** boxes. Pump↔Katsu **water** join needs no box.
+
+### Boxes (bought / assigned)
+
+| Box | Role |
+|-----|------|
+| **IP65 ~200×120×75** | 240 V split — Zigbee → Katsu + solenoid (+ future) |
+| **IP65 Large Medium** (deeper) | Sensor / ESP — confirm ≥ ~200×150×100 internal if board is 8 cm tall |
+| **IP55/65 ~85×85×50** | Solenoid **coil wiring only** |
+
+Also owned for install: Wagos, H07RN-F flex, PTFE, jubilee clips, cable glands, insulated female spades, adhesive heatshrink.
+
+### Solenoid weatherproofing (FCD-180B / B09Y45K21L)
+
+- Coil has **two exposed spade tabs** (~15 mm apart) — **not** a DIN Form A plug.  
+- **Valve body stays outside** (water ports free).  
+- Small box beside/above coil: insulated female spades + adhesive heatshrink; power cable in via gland.  
+- Water ports: **½″ BSP male** → **2× brass ½″ BSP female tap / hose connectors** (bought) + PTFE; then short hose to hub.
+
+---
+
+## 5h. Per-dripper shut-offs & ground cover
+
+### 4 mm in-line valves
+
+Cheap **4 mm barbed** on/off (or vari-flow) valves are fine at ~1.5 bar.
+
+```
+spine take-off → 4 mm → [valve] → 4 mm → dripper
+```
+
+Fit only on plants/branches you may turn off later (not every outlet). Keep valves reachable (near fence, not buried).
+
+### Ground cover
+
+**Do not** use micro-spray on this system (flow spike). Prefer:
+
+- **Several PC drippers** spaced through the patch (every ~40–60 cm), mostly **2 L/h**, and/or  
+- One **4 mm branch** with 2–3 drippers + **one shut-off valve** for the whole patch.
+
+Point drippers alone under-serve a carpet of cover — space multiple outlets.
 
 ---
 
@@ -860,6 +925,8 @@ Amazon order **placed** (~**£161** items + ~£2 postage). Delivery windows **19
 | **Water-butt link kit** | Link butts at **bottom** |
 | **AJ-SR04M** + ESP8266 | Water-butt level → HA (§5c) |
 | **UpXNBor Zigbee plug** | Times pump + solenoid (10 A continuous OK for 600 W pump) |
+| **Outdoor IP65/55 boxes** + Wagos / glands / flex / spades / heatshrink | Hub electrics (§5g) |
+| **Brass ½″ BSP female tap connectors** ×2 | Solenoid water ports |
 
 ### Ordered (Amazon checkout ~£161)
 
@@ -881,14 +948,16 @@ Amazon order **placed** (~**£161** items + ~£2 postage). Delivery windows **19
 
 | Item | Notes |
 |------|-------|
-| **NC 230 V brass solenoid ½″** | Siphon stop after Gardena — [B09Y45K21L](https://www.amazon.co.uk/dp/B09Y45K21L) (~£14). Wire with pump on Zigbee plug (§5d) |
-| **½″ BSP female adapters / hose tails** | Onto solenoid male ports |
-| **1″ BSP female → hose barb** ×2 | KATSU inlet + outlet if still needed — e.g. [B0DMW6M9PG](https://www.amazon.co.uk/dp/B0DMW6M9PG) |
-| **Short reinforced garden hose** | Bridges as required; jubilee clips |
-| **32 mm corrugated pond hose 10 m** | Gutter diverter (~27 mm) → butt — [eBay ~£21](https://www.ebay.co.uk/itm/164344849802) |
-| **Butt blanking (20 mm holes)** | Prefer **M12 bolt + rubber washers + penny washers + nut** sandwich (keeps hose adapters free). ¾″ flanged plugs only for ~25 mm holes |
+| **NC 230 V brass solenoid ½″** | Siphon stop — [B09Y45K21L](https://www.amazon.co.uk/dp/B09Y45K21L); wire with Zigbee (§5d). **½″ female brass connectors** owned |
+| **IP65/55 outdoor boxes** | Split + sensor + solenoid coil — owned (§5g); assign as documented |
+| **~40 more CETA PC drippers** | Stage 2 → ~80 total; favour **2 L/h** for ground cover / smaller plants |
+| Extra **4 mm micro tube** | If 50 m runs short for ~80 drops — get **100 m** total |
+| **4 mm in-line shut-off valves** | Only on outlets you may isolate later (§5h) |
+| **1″ BSP female → hose barb** ×2 | KATSU bridges if still needed |
+| **32 mm corrugated pond hose 10 m** | Gutter diverter → butt — [eBay](https://www.ebay.co.uk/itm/164344849802) |
+| **Butt blanking** | M12 bolt + rubber washers for ~20 mm holes |
+| Optional: **+2 or +4 × 200 L butts** | Drought buffer (§5f) |
 | Optional: mains float valve | Stage later |
-| Extra 4 mm / drippers | Only if walk-round needs more than 40 |
 
 Historical planning tables (A–E carts, Water Irrigation bulk quotes) kept below for reference — **do not re-order** items already listed above.
 
@@ -1166,6 +1235,9 @@ See **§11 ordered table** above. Key ASINs for re-orders/spares:
 | Butt capacity | **4×200 L ≈ 800 L** now; optional **+4 → ~1600 L** for drought buffer (§5f) |
 | Emitters (install) | **~80 PC drippers** target (~240 L/h); Stage 1 was 40 |
 | Roof catchment | **Two SE downpipes** → butts; ~60–90 m² plan area — fills store after useful rain (§5f) |
+| Outdoor electrics | Zigbee splits in IP65 box to Katsu + solenoid; separate IP65 for 12 V sensor; small box for solenoid spades only (§5g) |
+| Per-plant shut-off | Optional **4 mm barbed valves** on selected drops (§5h) |
+| Ground cover | Spaced **PC drippers** (no micro-spray); branch valve if isolating (§5h) |
 
 ---
 
@@ -1175,10 +1247,12 @@ See **§11 ordered table** above. Key ASINs for re-orders/spares:
 - Butt bank: **4×200 L linked at bottom**; decide on +4 (§5f); blank unused holes  
 - Pump on ground beside butts; fix strainer ~30 cm above butt floor  
 - Hub: G → KATSU → Gardena → **NC solenoid** — prove no leaks; plug OFF stops all flow  
+- Outdoor boxes wired (§5g); solenoid spades sealed  
 - Calibrate AJ-SR04M empty/full distances in ESPHome  
-- Thames Water ban / float-valve rules  
-- Walk-round: assign 2 L/h vs 4 L/h; drippers correct way round; cup-test far west  
+- Stage 2 drippers; cup-test **far west** after ~80 live  
+- Ground cover: spaced drippers + optional 4 mm valves (§5h)  
+- Thames Water ban / float-valve / extra butts (§5f)  
 
 ---
 
-*Amazon core order placed **18 Jul 2026** (~£161). Solenoid [B09Y45K21L](https://www.amazon.co.uk/dp/B09Y45K21L) to buy. Historical cart prices below are planning archive only.*
+*Living plan updated **23 Jul 2026**: ~80 drippers, 800 L butts, siphon solenoid, outdoor boxes, catchment §5f–§5h. Amazon core **18 Jul 2026**. Historical carts below are archive only. See also superseded notes in `Irregation System.md`.*
