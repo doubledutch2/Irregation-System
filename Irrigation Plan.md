@@ -1255,4 +1255,4 @@ See **§11 ordered table** above. Key ASINs for re-orders/spares:
 
 ---
 
-*Living plan updated **23 Jul 2026**: ~80 drippers, 800 L butts, siphon solenoid, outdoor boxes, catchment §5f–§5h. Amazon core **18 Jul 2026**. Historical carts below are archive only. See also superseded notes in `Irregation System.md`.*
+*Living plan updated **23 Jul 2026**: ~80 drippers, 800 L butts, siphon solenoid, outdoor boxes, catchment §5f–§5h. Amazon core **18 Jul 2026**. Historical carts below are archive only.*
