@@ -2,7 +2,7 @@
 
 **Property:** 9 Heather Garden, Newbury  
 **Plot:** ~21m × 21m (441m²)  
-**Water source:** Linked water butts (bottom-right of house, ~480L total)  
+**Water source:** Linked water butts (SE of house) — **4×200 L = ~800 L** now; optional expand to **8×200 L = ~1600 L** (§5f)  
 **Pump (owned):** [Hozelock Jet 3000 K7](https://www.hozelock.com/product/hozelock-jet-3000-k7/)  
 **Water-butt level (owned):** AJ-SR04M waterproof ultrasonic → ESP8266 + ESPHome → Home Assistant  
 **Drawing reference:** Proposed Garden Design, Mark Newell, Feb 2001 (`HG Garden.png`)
@@ -36,7 +36,7 @@ Mature ornamental garden with **spaced** shrubs/trees around a lawn. Water each 
 | Emitter demand | **~120 L/h** (~2 L/min) | Jet 3000 = **3000 L/h** | Yes — ~4% of pump capacity |
 | Pressure after reducer | **~1.5 bar** at hub | CETA PC window **~1–3.5 bar** | Yes |
 | Friction (see layout below) | Each fence branch ~**100 L/h** | 16 mm LDPE over ~35–70 m | Yes — same as old “half garden” case |
-| Water per ~75 min run | **~150 L** | Butts **~480 L** | Yes — large margin |
+| Water per ~60 min run (80 drippers) | **~240 L** | Butts **~800 L** (→~1600 L if expanded) | Yes |
 | Presscontrol / dry-run | **~2 L/min** continuous | Needs real flow, not dead-head | OK — keep network open while watering |
 
 ### Trade-off (accept this)
@@ -63,7 +63,7 @@ Counted **drawn plant icons** on the plan (not name labels). Excluded lavender b
 | **CETA black 4 L/h** | **20** | **80 L/h** |
 | **One zone total** | **40** | **~120 L/h** |
 
-| Run time | Water used | vs ~480 L store |
+| Run time | Water used | vs ~800 L store |
 |----------|------------|-----------------|
 | **60 min** | ~**120 L** | Fine |
 | **75 min** | ~**150 L** | Fine (design soak) |
@@ -378,6 +378,50 @@ Optional: keep the owned **13 mm flow-control valve** as a manual isolate for ma
 6. Fit **NC solenoid**; plug off → flow must stop within seconds.
 
 **Presscontrol note:** one dripper (~2 L/h) is far below the ~2 L/min the Presscontrol likes — flush with the far end open, or test with several drippers fitted.
+
+---
+
+## 5f. Water butts, roof catchment & expanding storage
+
+**Site:** 9 Heather Garden (satellite annotated — house in green; scale bar **5 m**).  
+**Feed:** **two downpipes** (red arrows on plan photo) on the SE / street-side eaves → linked butt bank.  
+**Current store:** **4 × 200 L ≈ 800 L** (linked at bottom).  
+**Irrigation demand (Stage 2):** **~80 drippers** → ~**240 L/h** → **~240 L** per 60 min morning run.
+
+### Will the roof fill the butts?
+
+Rough catchment on the two marked downpipes (plan area of the roof slopes they serve): **~60–90 m²** (estimate from satellite + 5 m scale — not a survey).
+
+| Rainfall on that catchment | Water into butts (× ~0.85 runoff) |
+|----------------------------|-----------------------------------|
+| **5 mm** shower | ~**250–380 L** |
+| **10 mm** | ~**500–760 L** |
+| **20 mm** | ~**1000–1500 L** |
+| Newbury-ish **year** (~650–750 mm) | Tens of thousands of litres — **far more than 800–1600 L** |
+
+**Yes — they will fill**, repeatedly, whenever useful rain returns. Filling **800 L** from empty needs roughly **one solid 10–15 mm** event on this catchment (or several lighter ones). Filling **1600 L** needs roughly **15–25 mm** cumulative useful rain.
+
+**Summer drought caveat:** in a heatwave with little rain, butts **do not refill from the sky**. Extra tanks buy **buffer between rain events**, not a continuous summer supply from an empty start.
+
+### Is buying 4 more butts (~£ + space) worth it?
+
+| | **Stay at 800 L** | **Add 4 → 1600 L** |
+|--|-------------------|---------------------|
+| 60 min @ 240 L/h | ~**3** runs | ~**6–7** runs |
+| Heatwave (every 2–3 days) | ~**1 week** of soaks | ~**2–3 weeks** |
+| Fill from rain | Easy | Still easy when rain returns |
+| Cost / footprint | — | 4 butts + link hose + space by SE wall |
+
+**Verdict:** **Worth it if** you want a longer dry-spell buffer and have space to link another 4×200 L at the **bottom**. Not essential if you can top up from mains float occasionally — **800 L already covers ~3 full irrigation days**.
+
+**Middle path:** add **2** butts first (→ **1200 L**, ~5 runs) and only go to 8 if a heatwave still empties you.
+
+### Rules if expanding
+
+1. Link **all** butts at the **bottom** (same water level).  
+2. Both downpipes into the bank (or one bank fed by both).  
+3. Overflow to drain when full — don’t flood the patio.  
+4. AJ-SR04M in one butt still represents the whole linked bank.
 
 ---
 
@@ -748,8 +792,9 @@ After any useful rain, dig a finger into the bed: if moist at knuckle depth, **s
 
 | Starting store | Safe runs before refill |
 |----------------|-------------------------|
-| ~480 L full | **One** 75 min run (~150 L) with ~330 L left — easy second pass another day if needed |
-| Same, then top up from mains float or rain | Another full 75 min when needed |
+| ~800 L full | **~3** × 60 min runs @ ~240 L/h (80 drippers) before empty |
+| ~1600 L (8 butts) | **~6–7** × 60 min runs — ~2 weeks of every-2–3-day heatwave watering |
+| After rain / float top-up | Refill between soaks as needed |
 | Near strainer (~30 cm above floor) | **Stop** — do not run |
 | **AJ-SR04M in Home Assistant** | Automate “skip run if level low” (§5c) |
 
@@ -1110,7 +1155,7 @@ See **§11 ordered table** above. Key ASINs for re-orders/spares:
 | Priming | Fill pump body **once**; keep NRV + airtight joints so timer can power on/off without re-priming |
 | Schedule | **60 min** morning via Zigbee; 75–90 min in heatwave (§9) |
 | Siphon when pump off | **NC 230 V brass solenoid** after Gardena, powered with pump (§5d) — not a manual daily valve |
-| Full garden pass | ~**120 L** @ 60 min (~**120 L/h**) — fits easily in ~480 L store |
+| Full garden pass | **~80 drippers** → ~**240 L/h**; **60 min** ≈ **240 L** — fits **~800 L** store (~3 runs); expand butts §5f |
 | Lawn / lavender | Off the system |
 | Install style | **Fence-mounted spine** (~0.6–1.0 m) with **cable ties + U-nails**; **4 mm drop to every plant** |
 | Long spine (~70 m) | **2–3 lengths** joined with **16 mm barbed straight connectors** at fence posts |
@@ -1118,13 +1163,16 @@ See **§11 ordered table** above. Key ASINs for re-orders/spares:
 | Water-butt level | **AJ-SR04M** + ESPHome → HA; skip runs when low (§5c) |
 | Gutter fill line | **32 mm** flex pond hose (10 m) diverter → butt — not 16 mm LDPE |
 | Blanking old butt holes | **M12 bolt + rubber washers** sandwich for ~20 mm holes |
+| Butt capacity | **4×200 L ≈ 800 L** now; optional **+4 → ~1600 L** for drought buffer (§5f) |
+| Emitters (install) | **~80 PC drippers** target (~240 L/h); Stage 1 was 40 |
+| Roof catchment | **Two SE downpipes** → butts; ~60–90 m² plan area — fills store after useful rain (§5f) |
 
 ---
 
 ## 13. Confirm on site
 
 - Living plants vs 2001 drawing  
-- Exact butt capacity / base linking (link kit at **bottom**, top holes blanked)  
+- Butt bank: **4×200 L linked at bottom**; decide on +4 (§5f); blank unused holes  
 - Pump on ground beside butts; fix strainer ~30 cm above butt floor  
 - Hub: G → KATSU → Gardena → **NC solenoid** — prove no leaks; plug OFF stops all flow  
 - Calibrate AJ-SR04M empty/full distances in ESPHome  
