@@ -1,0 +1,29 @@
+type: grid
+cards:
+  - type: heading
+    heading: Automation Settings
+    heading_style: title
+  - type: tile
+    name: Duration (min)
+    entity: input_number.water_garden_duration_minutes
+  - type: tile
+    name: Pause (min)
+    entity: input_number.water_garden_pause_minutes
+  - type: tile
+    name: Rain today
+    entity: sensor.rain_minutes_today
+  - type: tile
+    name: Level
+    entity: sensor.ultrasonic_waterbutt
+  - type: tile
+    name: Max High
+    entity: input_number.water_butt_max_high_level
+  - type: tile
+    name: Max Low
+    entity: input_number.water_butt_max_low_level
+  - type: tile
+    name: Requirement
+    entity: input_number.water_butt_minimum_refill_level
+  - type: tile
+    name: litre/cm
+    entity: input_number.water_butt_litres_per_cm

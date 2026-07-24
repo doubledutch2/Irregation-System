@@ -1,0 +1,13 @@
+# State machine for the split watering run. Must restore after HA restart.
+# Entity_id must be: input_select.water_garden_phase
+
+input_select:
+  water_garden_phase:
+    name: Water Garden Phase
+    options:
+      - idle
+      - first_half
+      - pause
+      - second_half
+    initial: idle
+    icon: mdi:state-machine

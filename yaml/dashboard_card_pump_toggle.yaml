@@ -1,0 +1,4 @@
+type: tile
+entity: switch.study_water_pump
+features:
+  - type: toggle

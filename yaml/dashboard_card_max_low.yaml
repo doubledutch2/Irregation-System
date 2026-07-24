@@ -1,0 +1,3 @@
+type: tile
+name: Max Low
+entity: input_number.water_butt_max_low_level

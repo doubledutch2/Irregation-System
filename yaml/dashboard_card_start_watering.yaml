@@ -1,0 +1,3 @@
+type: tile
+entity: input_button.water_garden_start
+name: Start watering

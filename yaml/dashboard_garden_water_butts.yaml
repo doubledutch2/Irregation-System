@@ -1,0 +1,92 @@
+# Paste as one item under the dashboard `views:` list in Lovelace raw config.
+# (Do not paste at column 0 without the leading "- ".)
+
+  - type: sections
+    max_columns: 4
+    title: Garden
+    path: water-butts
+    sections:
+      - type: grid
+        cards:
+          - type: tile
+            entity: input_button.water_garden_start
+            name: Start watering
+          - type: tile
+            entity: switch.study_water_pump
+            name: Pump
+            features:
+              - type: toggle
+          - type: tile
+            name: Phase
+            entity: input_select.water_garden_phase
+          - type: tile
+            name: Segment timer
+            entity: timer.water_garden_segment
+      - type: grid
+        cards:
+          - type: heading
+            heading: Water Butt Gauge
+            heading_style: title
+          - type: vertical-stack
+            cards:
+              - type: gauge
+                entity: sensor.water_butt_level
+                name: Water Butt Level
+                min: 0
+                max: 100
+                needle: false
+              - type: markdown
+                content: >
+                  {% set level = states('sensor.water_butt_level') | float(0) %}
+
+                  {% set need = states('sensor.water_butt_minimum_refill') |
+                  float(0) %}
+
+                  {% if level < need %}
+
+                  <ha-alert alert-type="error">Need {{ need | round(0) }}% to
+                  water - NOT enough</ha-alert>
+
+                  {% else %}
+
+                  <ha-alert alert-type="success">Need {{ need | round(0) }}% to
+                  water - enough</ha-alert>
+
+                  {% endif %}
+            title: Water Butt Level (%)
+          - type: entities
+            entities:
+              - entity: sensor.water_butt_litres_left
+                name: Litres left
+              - entity: sensor.water_butt_litres_required
+                name: Litres required for garden
+      - type: grid
+        cards:
+          - type: heading
+            heading: Automation Settings
+            heading_style: title
+          - type: tile
+            name: Duration (min)
+            entity: input_number.water_garden_duration_minutes
+          - type: tile
+            name: Pause (min)
+            entity: input_number.water_garden_pause_minutes
+          - type: tile
+            name: Rain today
+            entity: sensor.rain_minutes_today
+          - type: tile
+            name: Level
+            entity: sensor.ultrasonic_waterbutt
+          - type: tile
+            name: Max High
+            entity: input_number.water_butt_max_high_level
+          - type: tile
+            name: Max Low
+            entity: input_number.water_butt_max_low_level
+          - type: tile
+            name: Requirement
+            entity: input_number.water_butt_minimum_refill_level
+          - type: tile
+            name: litre/cm
+            entity: input_number.water_butt_litres_per_cm
+    cards: []

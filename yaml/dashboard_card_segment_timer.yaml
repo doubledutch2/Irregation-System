@@ -1,0 +1,3 @@
+type: tile
+name: Segment timer
+entity: timer.water_garden_segment

@@ -1,0 +1,16 @@
+type: grid
+cards:
+  - type: tile
+    entity: input_button.water_garden_start
+    name: Start watering
+  - type: tile
+    entity: switch.study_water_pump
+    name: Pump
+    features:
+      - type: toggle
+  - type: tile
+    name: Phase
+    entity: input_select.water_garden_phase
+  - type: tile
+    name: Segment timer
+    entity: timer.water_garden_segment

@@ -1,0 +1,14 @@
+- sensor:
+    - name: "Water Butt Litres Left"
+      unique_id: water_butt_litres_left
+      unit_of_measurement: "L"
+      state_class: measurement
+      state: >
+        {% set dist = states('sensor.ultrasonic_waterbutt') | float(none) %}
+        {% set low = states('input_number.water_butt_max_low_level') | float(none) %}
+        {% set lpcm = states('input_number.water_butt_litres_per_cm') | float(none) %}
+        {% if none in [dist, low, lpcm] %}
+          unavailable
+        {% else %}
+          {{ [[(low - dist) * lpcm, 0] | max, 99999] | min | round(0) }}
+        {% endif %}

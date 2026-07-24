@@ -1,0 +1,3 @@
+type: tile
+name: Phase
+entity: input_select.water_garden_phase

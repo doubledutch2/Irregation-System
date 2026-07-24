@@ -1,0 +1,99 @@
+- id: water_garden_segment_finished
+  alias: Water Garden - Segment finished
+  description: >-
+    Advances the split-run state machine when timer.water_garden_segment finishes.
+    first_half -> pause (pump off, notify, start pause timer);
+    pause -> second_half (pump on, start second half timer);
+    second_half -> idle (pump off, notify).
+  mode: single
+  triggers:
+    - trigger: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.water_garden_segment
+  conditions: []
+  actions:
+    - choose:
+        - conditions:
+            - condition: state
+              entity_id: input_select.water_garden_phase
+              state: first_half
+          sequence:
+            - action: input_select.select_option
+              target:
+                entity_id: input_select.water_garden_phase
+              data:
+                option: pause
+            - action: switch.turn_off
+              target:
+                entity_id: switch.study_water_pump
+            - action: notify.notifier_telegram_leon
+              data:
+                message: >-
+                  Water Garden first 50% DONE. Level {{
+                  states('sensor.water_butt_level') }}%, litres left {{
+                  states('sensor.water_butt_litres_left') }} L, distance {{
+                  states('sensor.ultrasonic_waterbutt') | float(0) | round(1)
+                  }} cm. Pausing {{ states('input_number.water_garden_pause_minutes')
+                  }} min for butts to rebalance.
+            - action: timer.start
+              target:
+                entity_id: timer.water_garden_segment
+              data:
+                duration: >
+                  {% set secs = (states('input_number.water_garden_pause_minutes') | float(15) * 60) | int %}
+                  {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
+        - conditions:
+            - condition: state
+              entity_id: input_select.water_garden_phase
+              state: pause
+          sequence:
+            - action: input_select.select_option
+              target:
+                entity_id: input_select.water_garden_phase
+              data:
+                option: second_half
+            - action: switch.turn_on
+              target:
+                entity_id: switch.study_water_pump
+            - action: timer.start
+              target:
+                entity_id: timer.water_garden_segment
+              data:
+                duration: >
+                  {% set secs = (states('input_number.water_garden_duration_minutes') | float(60) / 2 * 60) | int %}
+                  {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
+            - action: notify.notifier_telegram_leon
+              data:
+                message: >-
+                  Water Garden second 50% START. Level {{
+                  states('sensor.water_butt_level') }}%, litres left {{
+                  states('sensor.water_butt_litres_left') }} L, distance {{
+                  states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }} cm.
+        - conditions:
+            - condition: state
+              entity_id: input_select.water_garden_phase
+              state: second_half
+          sequence:
+            - action: input_select.select_option
+              target:
+                entity_id: input_select.water_garden_phase
+              data:
+                option: idle
+            - action: switch.turn_off
+              target:
+                entity_id: switch.study_water_pump
+            - action: notify.notifier_telegram_leon
+              data:
+                message: >-
+                  Water Garden second 50% DONE (run complete). Level {{
+                  states('sensor.water_butt_level') }}%, litres left {{
+                  states('sensor.water_butt_litres_left') }} L, distance {{
+                  states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }} cm.
+      default:
+        - action: notify.notifier_telegram_leon
+          data:
+            message: >-
+              Water Garden timer finished but phase was '{{
+              states('input_select.water_garden_phase') }}' (expected first_half,
+              pause, or second_half). Check phase / pump manually.

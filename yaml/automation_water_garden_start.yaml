@@ -1,0 +1,24 @@
+- id: '1784746590314'
+  alias: Water Garden Start
+  description: >-
+    REPLACE existing automation with this version. Starts the split-run sequence when
+    the start button is pressed, or when the pump switch is turned on while idle
+    (dashboard toggle). Does not start if a run is already in progress.
+  mode: single
+  triggers:
+    - trigger: state
+      entity_id: input_button.water_garden_start
+      # Button helpers fire on state change to a timestamp
+    - trigger: switch.turned_on
+      target:
+        entity_id: switch.study_water_pump
+      options:
+        behavior: each
+        for: 00:00:00
+  conditions:
+    - condition: state
+      entity_id: input_select.water_garden_phase
+      state: idle
+  actions:
+    - action: script.water_garden_start
+      data: {}

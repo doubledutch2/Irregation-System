@@ -1,0 +1,9 @@
+# One timer used for first half, pause, and second half.
+# restore: true is required so a mid-run HA restart keeps the remaining time.
+# Entity_id must be: timer.water_garden_segment
+
+timer:
+  water_garden_segment:
+    name: Water Garden Segment
+    restore: true
+    icon: mdi:sprinkler

@@ -1,0 +1,18 @@
+# DISABLE OR DELETE this automation in Home Assistant (id 1784744462305).
+# Replaced by timer.water_garden_segment + input_number.water_garden_duration_minutes
+# (split 50% / pause / 50%). Keeping a hard 1-hour stop would fight the new state machine.
+#
+# Former behaviour: pump on for 1 hour -> script.water_garden_stop
+
+- id: '1784744462305'
+  alias: Water Garden - Stop after 1 hour
+  description: DISABLED - delete in HA UI. Replaced by split-run duration helper + timer.
+  triggers:
+    - trigger: state
+      entity_id: switch.study_water_pump
+      to: 'on'
+      for:
+        hours: 1
+  conditions: []
+  actions: []
+  mode: single

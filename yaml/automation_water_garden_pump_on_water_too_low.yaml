@@ -1,0 +1,21 @@
+- id: '1784745405904'
+  alias: Water Garden - Pump is on but Water is too low
+  description: >-
+    REPLACE existing automation. Fires when distance rises above Max Low while a
+    watering half is active (sensor-driven, not every 5 minutes). Single Telegram
+    via stop script with reason.
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.ultrasonic_waterbutt
+      above: input_number.water_butt_max_low_level
+  conditions:
+    - condition: state
+      entity_id: input_select.water_garden_phase
+      state:
+        - first_half
+        - second_half
+  actions:
+    - action: script.water_garden_stop
+      data:
+        reason: STOP - water too low

@@ -1,0 +1,13 @@
+- sensor:
+    - name: "Water Butt Minimum Refill %"
+      unique_id: water_butt_minimum_refill_percent
+      unit_of_measurement: "%"
+      state: >
+        {% set high = states('input_number.water_butt_max_high_level') | float(none) %}
+        {% set low = states('input_number.water_butt_max_low_level') | float(none) %}
+        {% set target = states('input_number.water_butt_minimum_refill_level') | float(none) %}
+        {% if none in [high, low, target] or (low - high) == 0 %}
+          unavailable
+        {% else %}
+          {{ [[((low - target) / (low - high) * 100), 0] | max, 100] | min | round(0) }}
+        {% endif %}

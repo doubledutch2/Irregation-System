@@ -1,0 +1,31 @@
+alias: Water Garden - Stop
+description: >-
+  Abort or finish-cleanup - cancel segment timer, set phase idle, ensure pump off,
+  one Telegram message. Optional field "reason" for the notify text.
+fields:
+  reason:
+    name: Reason
+    description: Shown in the Telegram message
+    default: STOP / abort
+    selector:
+      text:
+sequence:
+  - action: timer.cancel
+    target:
+      entity_id: timer.water_garden_segment
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.water_garden_phase
+    data:
+      option: idle
+  - action: switch.turn_off
+    target:
+      entity_id: switch.study_water_pump
+  - action: notify.notifier_telegram_leon
+    data:
+      message: >-
+        Water Garden {{ reason | default('STOP / abort') }}. Level {{
+        states('sensor.water_butt_level') }}%, litres left {{
+        states('sensor.water_butt_litres_left') }} L, distance {{
+        states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }} cm.
+mode: single

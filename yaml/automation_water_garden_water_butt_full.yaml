@@ -1,0 +1,28 @@
+- id: '1784803698288'
+  alias: Water Garden - Water butt is full
+  description: >-
+    REPLACE existing automation. Notify when full or enough for tomorrow, with 2 min
+    debounce so splash / sensor noise does not spam Telegram.
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.ultrasonic_waterbutt
+      below: input_number.water_butt_max_high_level
+      for: "00:02:00"
+      id: full
+    - trigger: numeric_state
+      entity_id: sensor.ultrasonic_waterbutt
+      below: input_number.water_butt_minimum_refill_level
+      for: "00:02:00"
+      id: enough
+  conditions: []
+  actions:
+    - action: notify.notifier_telegram_leon
+      data:
+        message: >-
+          {% set level = states('sensor.ultrasonic_waterbutt') | float(0) | round(1) %}
+          {% if trigger.id == 'full' %}
+          Water butt is full ({{ level }} cm)
+          {% else %}
+          Water butt has enough for tomorrow ({{ level }} cm)
+          {% endif %}

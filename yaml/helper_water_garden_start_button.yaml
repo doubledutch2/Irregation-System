@@ -1,0 +1,8 @@
+# Optional dashboard button. Create as Helper type Button, entity_id:
+# input_button.water_garden_start
+# Wire automation_water_garden_start_button.yaml to it (or call the script from the dashboard).
+
+input_button:
+  water_garden_start:
+    name: Water Garden Start
+    icon: mdi:sprinkler-variant

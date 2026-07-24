@@ -1,0 +1,6 @@
+type: entities
+entities:
+  - entity: sensor.water_butt_litres_left
+    name: Litres left
+  - entity: sensor.water_butt_litres_required
+    name: Litres required for garden

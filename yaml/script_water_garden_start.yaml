@@ -1,0 +1,59 @@
+alias: Water Garden - Start
+description: >-
+  Start a split watering run - 50% on, pause (butts rebalance), 50% on.
+  Duration from input_number.water_garden_duration_minutes. Survives HA restart via
+  timer.water_garden_segment (restore) + input_select.water_garden_phase.
+sequence:
+  - if:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.water_garden_phase
+            state: idle
+    then:
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water Garden start ignored - already running (phase {{
+            states('input_select.water_garden_phase') }}).
+      - stop: ""
+  - if:
+      - condition: numeric_state
+        entity_id: sensor.ultrasonic_waterbutt
+        above: input_number.water_butt_max_low_level
+    then:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.study_water_pump
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water Garden start blocked - water too low (distance {{
+            states('sensor.ultrasonic_waterbutt') | float(0) | round(1)
+            }} cm above Max Low). Pump left OFF.
+      - stop: ""
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.water_garden_phase
+    data:
+      option: first_half
+  - action: switch.turn_on
+    target:
+      entity_id: switch.study_water_pump
+  - action: timer.start
+    target:
+      entity_id: timer.water_garden_segment
+    data:
+      duration: >
+        {% set secs = (states('input_number.water_garden_duration_minutes') | float(60) / 2 * 60) | int %}
+        {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
+  - action: notify.notifier_telegram_leon
+    data:
+      message: >-
+        Water Garden START (first 50%). Duration total {{
+        states('input_number.water_garden_duration_minutes') }} min ({{
+        (states('input_number.water_garden_duration_minutes') | float(60) / 2) | round(1)
+        }} min this half). Level {{ states('sensor.water_butt_level') }}%, litres left {{
+        states('sensor.water_butt_litres_left') }} L, distance {{
+        states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }} cm.
+mode: single

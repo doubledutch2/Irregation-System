@@ -1,0 +1,27 @@
+type: vertical-stack
+cards:
+  - type: gauge
+    entity: sensor.water_butt_level
+    name: Water Butt Level
+    min: 0
+    max: 100
+    needle: false
+  - type: markdown
+    content: >
+      {% set level = states('sensor.water_butt_level') | float(0) %}
+
+      {% set need = states('sensor.water_butt_minimum_refill') |
+      float(0) %}
+
+      {% if level < need %}
+
+      <ha-alert alert-type="error">Need {{ need | round(0) }}% to
+      water — NOT enough</ha-alert>
+
+      {% else %}
+
+      <ha-alert alert-type="success">Need {{ need | round(0) }}% to
+      water — enough</ha-alert>
+
+      {% endif %}
+title: Water Butt Level (%)

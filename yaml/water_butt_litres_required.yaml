@@ -1,0 +1,15 @@
+- sensor:
+    - name: "Water Butt Litres Required"
+      unique_id: water_butt_litres_required
+      unit_of_measurement: "L"
+      state_class: measurement
+      state: >
+        {% set low = states('input_number.water_butt_max_low_level') | float(none) %}
+        {% set high = states('input_number.water_butt_max_high_level') | float(none) %}
+        {% set need_pct = states('sensor.water_butt_minimum_refill') | float(none) %}
+        {% set lpcm = states('input_number.water_butt_litres_per_cm') | float(none) %}
+        {% if none in [low, high, need_pct, lpcm] or (low - high) == 0 %}
+          unavailable
+        {% else %}
+          {{ ((need_pct / 100) * (low - high) * lpcm) | round(0) }}
+        {% endif %}
