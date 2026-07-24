@@ -37,6 +37,38 @@ Reference layout (for you to paste/edit in the UI - agents do not write Lovelace
 
 Entities below come from package `/config/packages/water_garden.yaml` (repo: [`yaml/package_water_garden.yaml`](yaml/package_water_garden.yaml)), plus existing water-butt helpers/sensors.
 
+### Main screen (Newbury) - Start Watering for everyone
+
+Add a single big button on the **Newbury** home view (`default_view`) so watering is one tap (no Garden page, no confirm dialog).
+
+1. Open **Newbury** -> Edit dashboard.
+2. **Add card** -> **Button** (or Manual / YAML card).
+3. Paste from [`yaml/dashboard_card_main_start_watering.yaml`](yaml/dashboard_card_main_start_watering.yaml):
+
+```yaml
+type: button
+name: Start Watering
+icon: mdi:sprinkler-variant
+show_state: false
+tap_action:
+  action: perform-action
+  perform_action: script.water_garden_start
+```
+
+4. Put it near the top of the screen. Save.
+
+**What she should see after one press:**
+
+| Result | On-screen notification title | Meaning |
+|--------|------------------------------|---------|
+| OK | **Watering started - OK** | Run started; will pause halfway then finish |
+| Already running | **Watering not started** | Safe to ignore - already watering |
+| Butts empty | **Watering not started** | Top up butts, then press again |
+
+Notifications appear in the HA bell / notifications area. Telegram still gets the detailed calibration messages.
+
+**Important:** call `script.water_garden_start` directly (as above). Do not use a two-step "press helper then confirm" card.
+
 ### Section - run controls
 
 | Card | Entity | Name on dashboard | Role |

@@ -41,16 +41,17 @@ timer:
 
 input_button:
   water_garden_start:
-    name: Water Garden Start
+    name: Start Watering
     icon: mdi:sprinkler-variant
 
 script:
   water_garden_start:
-    alias: Water Garden - Start
+    alias: Start Watering
     description: >-
       Start a split watering run - 50% on, pause (butts rebalance), 50% on.
       Duration from input_number.water_garden_duration_minutes. Survives HA restart via
       timer.water_garden_segment (restore) + input_select.water_garden_phase.
+      Shows a clear on-screen persistent notification for success or failure.
     mode: single
     sequence:
       - if:
@@ -60,6 +61,13 @@ script:
                 entity_id: input_select.water_garden_phase
                 state: idle
         then:
+          - action: persistent_notification.create
+            data:
+              notification_id: water_garden_start
+              title: Watering not started
+              message: >-
+                Already watering (status: {{ states('input_select.water_garden_phase') }}).
+                No need to press Start again.
           - action: notify.notifier_telegram_leon
             data:
               message: >-
@@ -74,6 +82,12 @@ script:
           - action: switch.turn_off
             target:
               entity_id: switch.study_water_pump
+          - action: persistent_notification.create
+            data:
+              notification_id: water_garden_start
+              title: Watering not started
+              message: >-
+                Water butts are too low. Top up the butts, then press Start Watering again.
           - action: notify.notifier_telegram_leon
             data:
               message: >-
@@ -96,6 +110,14 @@ script:
           duration: >
             {% set secs = (states('input_number.water_garden_duration_minutes') | float(60) / 2 * 60) | int %}
             {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
+      - action: persistent_notification.create
+        data:
+          notification_id: water_garden_start
+          title: Watering started - OK
+          message: >-
+            Garden watering is running. It will pause halfway so the water butts can
+            rebalance, then finish automatically. Level {{ states('sensor.water_butt_level') }}%,
+            {{ states('sensor.water_butt_litres_left') }} L left.
       - action: notify.notifier_telegram_leon
         data:
           message: >-

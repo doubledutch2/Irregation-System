@@ -1,0 +1,11 @@
+# Add this card near the top of the main Newbury view (path: default_view).
+# One tap runs script.water_garden_start directly (no second confirm step).
+# After press, HA shows a notification: "Watering started - OK" (or why it did not start).
+
+type: button
+name: Start Watering
+icon: mdi:sprinkler-variant
+show_state: false
+tap_action:
+  action: perform-action
+  perform_action: script.water_garden_start

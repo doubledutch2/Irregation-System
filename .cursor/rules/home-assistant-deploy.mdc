@@ -10,7 +10,7 @@ When changing the live HA instance (SSH `root@192.168.1.49` port `15005`) or pre
 1. **Never update Dashboards.** Do not edit Lovelace / `.storage/lovelace*`. Tell the user what to change in the UI instead.
 2. **Backup before every change.** On the HA host, copy each target file to a sibling with a timestamp suffix (e.g. `automations.yaml.bak-YYYYMMDD-HHMMSS`) before writing. Also copy those backups (and any removed files) into this repo under `ha-backups/YYYY-MM-DD/` (create the date folder if needed). Prefer `scp`/`rsync` over SSH right after creating the host-side bak.
 3. **Use `/config/packages` only** for new/updated automations, scripts, helpers, timers, and related config. Prefer one package (e.g. `packages/water_garden.yaml`). Do not scatter new Water Garden logic into top-level `automations.yaml` / `scripts.yaml` when a package can own it. Packages include is already enabled on this host.
-4. **Test deploy with `ha core check` only.** After writing package/config changes, run `ha core check` over SSH. Treat a failed check as a failed deploy: fix or revert from backups. **Never restart Home Assistant Core** (`ha core restart` or equivalent) - the user restarts manually after a successful check.
+4. **Test deploy with `ha core check` only.** After writing package/config changes, run `ha core check` over SSH. Treat a failed check as a failed deploy: fix or revert from backups. **Never restart Home Assistant Core** (`ha core restart` or equivalent) - the user restarts manually after a successful check. **Always state explicitly in the reply:** (a) that `ha core check` passed or failed, and (b) whether the user must restart HA for the change to take effect.
 
 Also:
 
