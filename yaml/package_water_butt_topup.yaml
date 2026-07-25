@@ -1,0 +1,1015 @@
+# Water butt staged mains top-up via Sonoff Outside Tap Valve
+# Deployed to /config/packages/water_butt_topup.yaml
+# Burst ~30 min / gap ~3.5 h until truly full after equalisation.
+# Auto-starts when litres_left < litres_required. Watering always pauses top-up.
+
+input_boolean:
+  water_butt_topup_enabled:
+    name: Enable top-up
+    icon: mdi:water-plus
+  water_butt_topup_defaults_applied:
+    name: Top-up defaults applied
+    icon: mdi:check
+
+input_number:
+  water_butt_topup_burst_minutes:
+    name: Top-up burst
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: "min"
+    mode: box
+    icon: mdi:timer-outline
+  water_butt_topup_gap_minutes:
+    name: Top-up gap
+    min: 1
+    max: 720
+    step: 1
+    unit_of_measurement: "min"
+    mode: box
+    icon: mdi:timer-pause-outline
+  water_butt_topup_fill_margin_cm:
+    name: Top-up fill margin
+    min: 0
+    max: 20
+    step: 0.5
+    unit_of_measurement: "cm"
+    mode: box
+    icon: mdi:arrow-collapse-down
+  water_butt_total_capacity_litres:
+    name: Water butt capacity
+    min: 1
+    max: 5000
+    step: 1
+    unit_of_measurement: "L"
+    mode: box
+    icon: mdi:barrel
+  water_butt_topup_max_bursts:
+    name: Top-up max bursts
+    min: 1
+    max: 50
+    step: 1
+    mode: box
+    icon: mdi:counter
+  water_butt_topup_campaign_start_litres:
+    name: Top-up campaign start litres
+    min: 0
+    max: 10000000
+    step: 0.1
+    unit_of_measurement: "L"
+    mode: box
+    icon: mdi:ray-start
+  water_butt_topup_campaign_burst_count:
+    name: Top-up campaign burst count
+    min: 0
+    max: 100
+    step: 1
+    mode: box
+    icon: mdi:numeric
+  water_butt_topup_last_flow_m3h:
+    name: Top-up last flow
+    min: 0
+    max: 50
+    step: 0.001
+    unit_of_measurement: "m³/h"
+    mode: box
+    icon: mdi:water-pump
+
+input_select:
+  water_butt_topup_phase:
+    name: Top-up phase
+    options:
+      - idle
+      - burst
+      - settling
+      - paused
+    icon: mdi:state-machine
+
+timer:
+  water_butt_topup_segment:
+    name: Top-up segment
+    restore: true
+    icon: mdi:pipe-valve
+
+input_button:
+  water_butt_topup_now:
+    name: Top-up now
+    icon: mdi:water-boiler
+
+# Flow rate is m3/h -> integral gives cumulative m3 (never resets).
+sensor:
+  - platform: integration
+    source: sensor.outside_tap_valve_volume_flow_rate
+    name: Outside Tap cumulative m3
+    unique_id: outside_tap_valve_volume_total_m3
+    round: 5
+    method: left
+    max_sub_interval:
+      minutes: 1
+
+template:
+  - sensor:
+      - name: "Outside Tap litres total"
+        unique_id: outside_tap_valve_litres_total
+        default_entity_id: sensor.outside_tap_valve_litres_total
+        unit_of_measurement: "L"
+        device_class: water
+        state_class: total_increasing
+        icon: mdi:counter
+        state: >
+          {{ (states('sensor.outside_tap_cumulative_m3') | float(0) * 1000) | round(1) }}
+
+      - name: "Top-up campaign litres"
+        unique_id: water_butt_topup_campaign_litres
+        default_entity_id: sensor.water_butt_topup_campaign_litres
+        unit_of_measurement: "L"
+        device_class: water
+        state_class: measurement
+        icon: mdi:water-plus
+        state: >
+          {% set total = states('sensor.outside_tap_valve_litres_total') | float(none) %}
+          {% set start = states('input_number.water_butt_topup_campaign_start_litres') | float(none) %}
+          {% if none in [total, start] %}
+            unavailable
+          {% else %}
+            {{ [(total - start), 0] | max | round(1) }}
+          {% endif %}
+
+      - name: "Litres to full"
+        unique_id: water_butt_litres_to_full
+        default_entity_id: sensor.water_butt_litres_to_full
+        unit_of_measurement: "L"
+        device_class: water
+        state_class: measurement
+        icon: mdi:gauge-full
+        state: >
+          {% set dist = states('sensor.ultrasonic_waterbutt') | float(none) %}
+          {% set high = states('input_number.water_butt_max_high_level') | float(none) %}
+          {% set lpcm = states('input_number.water_butt_litres_per_cm') | float(none) %}
+          {% if none in [dist, high, lpcm] %}
+            unavailable
+          {% else %}
+            {{ [((dist - high) * lpcm), 0] | max | round(0) }}
+          {% endif %}
+
+      - name: "Minutes to full"
+        unique_id: water_butt_minutes_to_full
+        default_entity_id: sensor.water_butt_minutes_to_full
+        unit_of_measurement: "min"
+        state_class: measurement
+        icon: mdi:timer-sand
+        state: >
+          {% set need = states('sensor.water_butt_litres_to_full') | float(none) %}
+          {% set live = states('sensor.outside_tap_valve_volume_flow_rate') | float(0) %}
+          {% set last = states('input_number.water_butt_topup_last_flow_m3h') | float(0) %}
+          {% set flow_m3h = live if live > 0 else last %}
+          {% set burst = states('input_number.water_butt_topup_burst_minutes') | float(30) %}
+          {% set gap = states('input_number.water_butt_topup_gap_minutes') | float(210) %}
+          {% if need is none %}
+            unavailable
+          {% elif need <= 0 %}
+            0
+          {% elif flow_m3h <= 0 %}
+            unavailable
+          {% else %}
+            {% set flow_lph = flow_m3h * 1000 %}
+            {% set cycle = burst + gap %}
+            {% set duty = (burst / cycle) if cycle > 0 else 1 %}
+            {% set phase = states('input_select.water_butt_topup_phase') %}
+            {% set valve_on = is_state('switch.outside_tap_valve', 'on') %}
+            {% if phase == 'burst' and valve_on and live > 0 %}
+              {% set effective_lph = flow_lph %}
+            {% else %}
+              {% set effective_lph = flow_lph * duty %}
+            {% endif %}
+            {% if effective_lph <= 0 %}
+              unavailable
+            {% else %}
+              {{ [(need / effective_lph * 60), 0] | max | round(0) }}
+            {% endif %}
+          {% endif %}
+        attributes:
+          eta: >
+            {% set m = states('sensor.water_butt_minutes_to_full') | float(none) %}
+            {% if m is none %}
+              unknown (need a flow reading)
+            {% elif m <= 0 %}
+              full
+            {% else %}
+              {% set h = (m // 60) | int %}
+              {% set mm = (m % 60) | int %}
+              {% if h > 0 %}{{ h }}h {{ mm }}m{% else %}{{ mm }} min{% endif %}
+            {% endif %}
+          remaining_litres: "{{ states('sensor.water_butt_litres_to_full') }}"
+          assumed_flow_m3h: >
+            {% set live = states('sensor.outside_tap_valve_volume_flow_rate') | float(0) %}
+            {% set last = states('input_number.water_butt_topup_last_flow_m3h') | float(0) %}
+            {{ (live if live > 0 else last) | round(3) }}
+          note: >
+            {% if is_state('input_select.water_butt_topup_phase', 'burst')
+               and is_state('switch.outside_tap_valve', 'on')
+               and states('sensor.outside_tap_valve_volume_flow_rate') | float(0) > 0 %}
+              Using live flow (valve open)
+            {% else %}
+              Using burst/gap duty cycle ({{ states('input_number.water_butt_topup_burst_minutes') }}/{{
+              states('input_number.water_butt_topup_gap_minutes') }} min)
+            {% endif %}
+
+script:
+  water_butt_topup_safety_trip:
+    alias: Water butt top-up - Safety trip
+    description: >-
+      Hard stop - close valve, end campaign, disable Enable top-up so a leak or
+      failed sensor cannot keep filling.
+    mode: single
+    fields:
+      reason:
+        name: Reason
+        default: SAFETY TRIP
+        selector:
+          text:
+    sequence:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.outside_tap_valve
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.water_butt_topup_enabled
+      - action: script.water_butt_topup_stop
+        data:
+          reason: "{{ reason | default('SAFETY TRIP') }}"
+
+  water_butt_topup_stop:
+    alias: Water butt top-up - Stop
+    description: Abort campaign - valve off, timer cancel, phase idle.
+    mode: single
+    fields:
+      reason:
+        name: Reason
+        default: STOP
+        selector:
+          text:
+    sequence:
+      - if:
+          - condition: state
+            entity_id: input_select.water_butt_topup_phase
+            state: idle
+        then:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.outside_tap_valve
+          - stop: ""
+      - action: timer.cancel
+        target:
+          entity_id: timer.water_butt_topup_segment
+      - action: switch.turn_off
+        target:
+          entity_id: switch.outside_tap_valve
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.water_butt_topup_phase
+        data:
+          option: idle
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water butt top-up {{ reason | default('STOP') }}. Level {{
+            states('sensor.water_butt_level') }}%, litres left {{
+            states('sensor.water_butt_litres_left') }} L.
+
+  water_butt_topup_complete:
+    alias: Water butt top-up - Complete
+    description: Butts truly full after settle - end campaign.
+    mode: single
+    sequence:
+      - action: timer.cancel
+        target:
+          entity_id: timer.water_butt_topup_segment
+      - action: switch.turn_off
+        target:
+          entity_id: switch.outside_tap_valve
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.water_butt_topup_phase
+        data:
+          option: idle
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water butt top-up COMPLETE (truly full after settle). Level {{
+            states('sensor.water_butt_level') }}%, litres left {{
+            states('sensor.water_butt_litres_left') }} L.
+
+  water_butt_topup_open_burst:
+    alias: Water butt top-up - Open burst
+    description: Open Outside Tap Valve for one burst (or pause if watering active).
+    mode: single
+    sequence:
+      - if:
+          - condition: state
+            entity_id: input_boolean.water_butt_topup_enabled
+            state: "off"
+        then:
+          - action: script.water_butt_topup_stop
+            data:
+              reason: STOP - auto top-up disabled
+          - stop: ""
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: input_select.water_garden_phase
+                state: idle
+        then:
+          - action: script.water_butt_topup_pause_for_watering
+            data: {}
+          - stop: ""
+      - if:
+          - condition: state
+            entity_id: binary_sensor.outside_tap_valve_water_leak
+            state: "on"
+        then:
+          - action: script.water_butt_topup_safety_trip
+            data:
+              reason: SAFETY TRIP - leak detected (top-up disabled)
+          - stop: ""
+      - if:
+          - condition: template
+            value_template: >
+              {% set added = states('sensor.water_butt_topup_campaign_litres') | float(0) %}
+              {% set cap = states('input_number.water_butt_total_capacity_litres') | float(630) %}
+              {{ added >= cap }}
+        then:
+          - action: script.water_butt_topup_safety_trip
+            data:
+              reason: >-
+                SAFETY TRIP - campaign litres {{
+                states('sensor.water_butt_topup_campaign_litres') }} L >= capacity {{
+                states('input_number.water_butt_total_capacity_litres') }} L (top-up disabled)
+          - stop: ""
+      - if:
+          - condition: template
+            value_template: >
+              {% set n = states('input_number.water_butt_topup_campaign_burst_count') | float(0) %}
+              {% set maxb = states('input_number.water_butt_topup_max_bursts') | float(15) %}
+              {{ n >= maxb }}
+        then:
+          - action: script.water_butt_topup_safety_trip
+            data:
+              reason: >-
+                SAFETY TRIP - max bursts {{
+                states('input_number.water_butt_topup_max_bursts') }} reached
+                ({{ states('input_number.water_butt_topup_campaign_burst_count') }} done;
+                top-up disabled)
+          - stop: ""
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_topup_campaign_burst_count
+        data:
+          value: "{{ (states('input_number.water_butt_topup_campaign_burst_count') | float(0) + 1) | int }}"
+      - if:
+          - condition: state
+            entity_id: binary_sensor.outside_tap_valve_water_supply
+            state: "off"
+        then:
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.water_butt_topup_phase
+            data:
+              option: settling
+          - action: timer.start
+            target:
+              entity_id: timer.water_butt_topup_segment
+            data:
+              duration: >
+                {% set secs = (states('input_number.water_butt_topup_gap_minutes') | float(210) * 60) | int %}
+                {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
+          - action: notify.notifier_telegram_leon
+            data:
+              message: >-
+                Water butt top-up burst skipped - no water supply. Waiting gap {{
+                states('input_number.water_butt_topup_gap_minutes') }} min.
+          - stop: ""
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.water_butt_topup_phase
+        data:
+          option: burst
+      - action: switch.turn_on
+        target:
+          entity_id: switch.outside_tap_valve
+      - action: timer.start
+        target:
+          entity_id: timer.water_butt_topup_segment
+        data:
+          duration: >
+            {% set secs = (states('input_number.water_butt_topup_burst_minutes') | float(30) * 60) | int %}
+            {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water butt top-up BURST start ({{
+            states('input_number.water_butt_topup_burst_minutes') }} min). Level {{
+            states('sensor.water_butt_level') }}%, litres left {{
+            states('sensor.water_butt_litres_left') }} L.
+
+  water_butt_topup_close_to_settle:
+    alias: Water butt top-up - Close to settle
+    description: Close valve and wait gap for equalisation / water-company pacing.
+    mode: single
+    sequence:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.outside_tap_valve
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.water_butt_topup_phase
+        data:
+          option: settling
+      - action: timer.start
+        target:
+          entity_id: timer.water_butt_topup_segment
+        data:
+          duration: >
+            {% set secs = (states('input_number.water_butt_topup_gap_minutes') | float(210) * 60) | int %}
+            {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water butt top-up burst DONE. Settling / gap {{
+            states('input_number.water_butt_topup_gap_minutes') }} min. Level {{
+            states('sensor.water_butt_level') }}%, litres left {{
+            states('sensor.water_butt_litres_left') }} L.
+
+  water_butt_topup_pause_for_watering:
+    alias: Water butt top-up - Pause for watering
+    description: Watering priority - close valve, hold campaign in paused.
+    mode: single
+    sequence:
+      - if:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: idle
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: paused
+        then:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.outside_tap_valve
+          - stop: ""
+      - action: timer.cancel
+        target:
+          entity_id: timer.water_butt_topup_segment
+      - action: switch.turn_off
+        target:
+          entity_id: switch.outside_tap_valve
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.water_butt_topup_phase
+        data:
+          option: paused
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water butt top-up PAUSED for watering. Will resume when watering is idle.
+
+  water_butt_topup_resume_after_watering:
+    alias: Water butt top-up - Resume after watering
+    description: Continue campaign after watering returns to idle.
+    mode: single
+    sequence:
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: paused
+        then:
+          - stop: ""
+      - if:
+          - condition: state
+            entity_id: input_boolean.water_butt_topup_enabled
+            state: "off"
+        then:
+          - action: script.water_butt_topup_stop
+            data:
+              reason: STOP - auto top-up disabled
+          - stop: ""
+      - if:
+          - condition: template
+            value_template: >
+              {% set d = states('sensor.ultrasonic_waterbutt') | float(999) %}
+              {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
+              {{ d <= (high + 1) }}
+        then:
+          - action: script.water_butt_topup_complete
+            data: {}
+          - stop: ""
+      - action: notify.notifier_telegram_leon
+        data:
+          message: Water butt top-up RESUMED after watering.
+      - action: script.water_butt_topup_open_burst
+        data: {}
+
+  water_butt_topup_start:
+    alias: Water butt top-up - Start campaign
+    description: Begin staged fill until truly full.
+    mode: single
+    sequence:
+      - if:
+          - condition: state
+            entity_id: input_boolean.water_butt_topup_enabled
+            state: "off"
+        then:
+          - action: notify.notifier_telegram_leon
+            data:
+              message: Water butt top-up start ignored - Auto top-up is OFF.
+          - stop: ""
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: idle
+        then:
+          - stop: ""
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: input_select.water_garden_phase
+                state: idle
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_topup_campaign_start_litres
+            data:
+              value: "{{ states('sensor.outside_tap_valve_litres_total') | float(0) | round(1) }}"
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_topup_campaign_burst_count
+            data:
+              value: 0
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.water_butt_topup_phase
+            data:
+              option: paused
+          - action: notify.notifier_telegram_leon
+            data:
+              message: >-
+                Water butt top-up needed but watering active - queued (paused)
+                until watering finishes.
+          - stop: ""
+      - if:
+          - condition: template
+            value_template: >
+              {% set d = states('sensor.ultrasonic_waterbutt') | float(999) %}
+              {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
+              {{ d <= (high + 1) }}
+        then:
+          - action: notify.notifier_telegram_leon
+            data:
+              message: Water butt top-up start ignored - already at/near Max High.
+          - stop: ""
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_topup_campaign_start_litres
+        data:
+          value: "{{ states('sensor.outside_tap_valve_litres_total') | float(0) | round(1) }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_topup_campaign_burst_count
+        data:
+          value: 0
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water butt top-up CAMPAIGN start (not enough for next watering:
+            {{ states('sensor.water_butt_litres_left') }} L left, need {{
+            states('sensor.water_butt_litres_required') }} L). Safety budget {{
+            states('input_number.water_butt_total_capacity_litres') }} L / max {{
+            states('input_number.water_butt_topup_max_bursts') }} bursts.
+      - action: script.water_butt_topup_open_burst
+        data: {}
+
+automation:
+  - id: water_butt_topup_apply_defaults
+    alias: Water butt top-up - Apply defaults once
+    description: >-
+      Suggested defaults (no input_number initial:). Burst 30, gap 210, margin 2.
+      Runs when defaults flag is off/unavailable, or helpers still at virgin mins (1/1/0).
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.water_butt_topup_defaults_applied
+            state: "off"
+          - condition: state
+            entity_id: input_boolean.water_butt_topup_defaults_applied
+            state: unavailable
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_topup_burst_minutes') | float(0) == 1
+                 and states('input_number.water_butt_topup_gap_minutes') | float(0) == 1
+                 and states('input_number.water_butt_topup_fill_margin_cm') | float(-1) == 0 }}
+    actions:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_topup_burst_minutes
+        data:
+          value: 30
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_topup_gap_minutes
+        data:
+          value: 210
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_topup_fill_margin_cm
+        data:
+          value: 2
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_total_capacity_litres') in
+              ['unknown', 'unavailable', 'none', '']
+              or states('input_number.water_butt_total_capacity_litres') | float(0) == 0 }}
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_total_capacity_litres
+            data:
+              value: 630
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_topup_max_bursts') in
+              ['unknown', 'unavailable', 'none', '']
+              or states('input_number.water_butt_topup_max_bursts') | float(0) == 0 }}
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_topup_max_bursts
+            data:
+              value: 15
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.water_butt_topup_defaults_applied
+
+  - id: water_butt_topup_seed_capacity
+    alias: Water butt top-up - Seed capacity helpers if unset
+    description: Set capacity 630 L and max bursts 15 when still unset (every HA start).
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions: []
+    actions:
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_total_capacity_litres') in
+              ['unknown', 'unavailable', 'none', '']
+              or states('input_number.water_butt_total_capacity_litres') | float(0) == 0 }}
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_total_capacity_litres
+            data:
+              value: 630
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_topup_max_bursts') in
+              ['unknown', 'unavailable', 'none', '']
+              or states('input_number.water_butt_topup_max_bursts') | float(0) == 0 }}
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_topup_max_bursts
+            data:
+              value: 15
+
+  - id: water_butt_topup_capacity_budget
+    alias: Water butt top-up - Capacity budget exceeded
+    description: >-
+      If a campaign has put more than total butt capacity through the valve,
+      abort and disable top-up (leak / sensor failure guard).
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.outside_tap_valve_litres_total
+      - trigger: state
+        entity_id: sensor.water_butt_topup_campaign_litres
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.water_butt_topup_phase
+            state: idle
+      - condition: template
+        value_template: >
+          {% set added = states('sensor.water_butt_topup_campaign_litres') | float(0) %}
+          {% set cap = states('input_number.water_butt_total_capacity_litres') | float(630) %}
+          {{ cap > 0 and added >= cap }}
+    actions:
+      - action: script.water_butt_topup_safety_trip
+        data:
+          reason: >-
+            SAFETY TRIP - campaign litres {{
+            states('sensor.water_butt_topup_campaign_litres') }} L >= capacity {{
+            states('input_number.water_butt_total_capacity_litres') }} L (top-up disabled)
+
+  - id: water_butt_topup_auto_start
+    alias: Water butt top-up - Auto start when not enough
+    description: >-
+      When usable litres drop below litres required for the next watering, start
+      a staged top-up campaign (if enabled and idle).
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.water_butt_litres_left
+        below: sensor.water_butt_litres_required
+        for: "00:02:00"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.water_butt_topup_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_select.water_butt_topup_phase
+        state: idle
+    actions:
+      - action: script.water_butt_topup_start
+        data: {}
+
+  - id: water_butt_topup_remember_flow
+    alias: Water butt top-up - Remember last flow rate
+    description: Store last non-zero SWV flow for ETA when the valve is closed.
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.outside_tap_valve_volume_flow_rate
+        above: 0
+    conditions: []
+    actions:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_topup_last_flow_m3h
+        data:
+          value: "{{ states('sensor.outside_tap_valve_volume_flow_rate') | float(0) | round(3) }}"
+
+  - id: water_butt_topup_now_button
+    alias: Water butt top-up - Now button
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_button.water_butt_topup_now
+    conditions:
+      - condition: state
+        entity_id: input_select.water_butt_topup_phase
+        state: idle
+    actions:
+      - action: script.water_butt_topup_start
+        data: {}
+
+  - id: water_butt_topup_disabled
+    alias: Water butt top-up - Disabled
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_boolean.water_butt_topup_enabled
+        to: "off"
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.water_butt_topup_phase
+            state: idle
+    actions:
+      - action: script.water_butt_topup_stop
+        data:
+          reason: STOP - Auto top-up turned OFF
+
+  - id: water_butt_topup_pause_when_watering
+    alias: Water butt top-up - Pause when watering starts
+    description: Watering priority - pause any active top-up campaign.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.water_garden_phase
+        from: idle
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.water_butt_topup_phase
+            state:
+              - idle
+              - paused
+    actions:
+      - action: script.water_butt_topup_pause_for_watering
+        data: {}
+
+  - id: water_butt_topup_resume_when_watering_idle
+    alias: Water butt top-up - Resume when watering idle
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.water_garden_phase
+        to: idle
+    conditions: []
+    actions:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: paused
+            sequence:
+              - action: script.water_butt_topup_resume_after_watering
+                data: {}
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.water_butt_topup_enabled
+                state: "on"
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: idle
+              - condition: numeric_state
+                entity_id: sensor.water_butt_litres_left
+                below: sensor.water_butt_litres_required
+            sequence:
+              - action: script.water_butt_topup_start
+                data: {}
+
+  - id: water_butt_topup_segment_finished
+    alias: Water butt top-up - Segment finished
+    mode: single
+    triggers:
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.water_butt_topup_segment
+    conditions: []
+    actions:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: burst
+            sequence:
+              - action: script.water_butt_topup_close_to_settle
+                data: {}
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: settling
+            sequence:
+              - if:
+                  - condition: state
+                    entity_id: input_boolean.water_butt_topup_enabled
+                    state: "off"
+                then:
+                  - action: script.water_butt_topup_stop
+                    data:
+                      reason: STOP - auto top-up disabled
+                  - stop: ""
+              - if:
+                  - condition: not
+                    conditions:
+                      - condition: state
+                        entity_id: input_select.water_garden_phase
+                        state: idle
+                then:
+                  - action: script.water_butt_topup_pause_for_watering
+                    data: {}
+                  - stop: ""
+              - if:
+                  - condition: template
+                    value_template: >
+                      {% set d = states('sensor.ultrasonic_waterbutt') | float(999) %}
+                      {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
+                      {{ d <= (high + 1) }}
+                then:
+                  - action: script.water_butt_topup_complete
+                    data: {}
+                else:
+                  - action: script.water_butt_topup_open_burst
+                    data: {}
+        default:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.outside_tap_valve
+
+  - id: water_butt_topup_early_margin_close
+    alias: Water butt top-up - Early close at fill margin
+    description: >-
+      During burst, close when sensor butt approaches Max High minus margin so
+      siblings can catch up on the next cycle.
+    mode: single
+    triggers:
+      - trigger: template
+        value_template: >
+          {% set d = states('sensor.ultrasonic_waterbutt') | float(999) %}
+          {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
+          {% set margin = states('input_number.water_butt_topup_fill_margin_cm') | float(2) %}
+          {{ d <= (high - margin) }}
+    conditions:
+      - condition: state
+        entity_id: input_select.water_butt_topup_phase
+        state: burst
+    actions:
+      - action: timer.cancel
+        target:
+          entity_id: timer.water_butt_topup_segment
+      - action: script.water_butt_topup_close_to_settle
+        data: {}
+
+  - id: water_butt_topup_leak_abort
+    alias: Water butt top-up - Leak abort
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.outside_tap_valve_water_leak
+        to: "on"
+    conditions: []
+    actions:
+      - action: script.water_butt_topup_safety_trip
+        data:
+          reason: SAFETY TRIP - leak detected (top-up disabled)
+
+  - id: water_butt_topup_valve_watchdog
+    alias: Water butt top-up - Valve open watchdog
+    description: Force valve closed if left open longer than 35 minutes; disable top-up.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: switch.outside_tap_valve
+        to: "on"
+        for: "00:35:00"
+    conditions: []
+    actions:
+      - action: script.water_butt_topup_safety_trip
+        data:
+          reason: SAFETY TRIP - valve open watchdog 35 min (top-up disabled)
+
+  - id: water_butt_topup_ha_start_recover
+    alias: Water butt top-up - Recover after HA restart
+    description: Never leave the tap valve open after HA restart; resume settling if mid-campaign.
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions: []
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.outside_tap_valve
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: burst
+              - condition: state
+                entity_id: input_boolean.water_butt_topup_enabled
+                state: "on"
+            sequence:
+              - action: script.water_butt_topup_close_to_settle
+                data: {}
+              - action: notify.notifier_telegram_leon
+                data:
+                  message: >-
+                    HA restarted during top-up burst. Valve forced OFF; settling gap started.
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state:
+                  - settling
+                  - paused
+              - condition: state
+                entity_id: input_boolean.water_butt_topup_enabled
+                state: "off"
+            sequence:
+              - action: script.water_butt_topup_stop
+                data:
+                  reason: STOP - disabled after HA restart
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: paused
+              - condition: state
+                entity_id: input_select.water_garden_phase
+                state: idle
+              - condition: state
+                entity_id: input_boolean.water_butt_topup_enabled
+                state: "on"
+            sequence:
+              - action: script.water_butt_topup_resume_after_watering
+                data: {}

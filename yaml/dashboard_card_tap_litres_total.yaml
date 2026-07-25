@@ -1,0 +1,3 @@
+type: tile
+entity: sensor.outside_tap_valve_litres_total
+name: Tap litres total

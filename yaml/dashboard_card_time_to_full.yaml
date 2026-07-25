@@ -1,0 +1,11 @@
+type: entities
+entities:
+  - entity: sensor.water_butt_litres_to_full
+    name: Litres to full
+  - entity: sensor.water_butt_minutes_to_full
+    name: Minutes to full
+  - type: attribute
+    entity: sensor.water_butt_minutes_to_full
+    attribute: eta
+    name: ETA
+title: Time to full

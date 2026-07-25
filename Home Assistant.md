@@ -117,6 +117,35 @@ No Home Assistant persistent/bell notifications for Water Garden (Telegram only)
 
 **Dashboard change:** remove the old **Requirement (L)** / cm requirement tiles if still present. Add **Red drippers** and **Black drippers** tiles. Keep **Litres required for garden** as a read-only sensor. Add **Last litres used (actual)** and **Last litres required (expected)** for calibration (`yaml/dashboard_card_watering_usage.yaml`).
 
+### Section - Water butt top-up (mains)
+
+Package: [`yaml/package_water_butt_topup.yaml`](yaml/package_water_butt_topup.yaml) -> `/config/packages/water_butt_topup.yaml`. Valve: `switch.outside_tap_valve`.
+
+| Card | Entity | Name on dashboard | Role |
+|------|--------|-------------------|------|
+| Tile + toggle | `input_boolean.water_butt_topup_enabled` | Enable top-up | Master enable/disable for fill logic. OFF aborts any campaign. [`dashboard_card_topup_enabled.yaml`](yaml/dashboard_card_topup_enabled.yaml) |
+| Tile | `input_button.water_butt_topup_now` | Top-up now | Force-start a campaign while idle |
+| Tile | `input_select.water_butt_topup_phase` | Top-up phase | `idle` / `burst` / `settling` / `paused` |
+| Tile | `timer.water_butt_topup_segment` | Top-up segment | Burst or gap countdown |
+| Tile | `input_number.water_butt_topup_burst_minutes` | Top-up burst (min) | Valve open time (default **30** if unset) |
+| Tile | `input_number.water_butt_topup_gap_minutes` | Top-up gap (min) | Off time between bursts (default **210** = 3.5 h if unset) |
+| Tile | `input_number.water_butt_topup_fill_margin_cm` | Fill margin (cm) | Early close vs Max High (default **2** if unset) |
+| Tile | `sensor.water_butt_litres_to_full` | Litres to full | `(distance - Max High) x L/cm` |
+| Tile | `sensor.water_butt_minutes_to_full` | Minutes to full | ETA from remaining litres + SWV flow and burst/gap duty cycle. Attribute `eta` is human text (e.g. `2h 15m`). Unavailable until a flow reading exists. |
+| Tile | `input_number.water_butt_total_capacity_litres` | Butt capacity (L) | Nameplate bank capacity (default **630**). Campaign abort if valve puts more than this through. |
+| Tile | `input_number.water_butt_topup_max_bursts` | Top-up max bursts | Backup limit if flow meter stuck (default **15**). |
+| Tile | `sensor.water_butt_topup_campaign_litres` | Campaign litres added | Litres through valve since this campaign started |
+| Tile + toggle | `switch.outside_tap_valve` | Outside Tap Valve | Manual override / visibility |
+| Tile | `sensor.outside_tap_valve_litres_total` | Tap litres total | Lifetime litres through the valve (never resets). Add after restart. |
+| Tile | `binary_sensor.outside_tap_valve_water_leak` | Tap leak | Safety trip + disables top-up |
+| Tile | `binary_sensor.outside_tap_valve_water_supply` | Tap supply | Skip burst if off |
+
+Paste section: [`yaml/dashboard_section_water_butt_topup.yaml`](yaml/dashboard_section_water_butt_topup.yaml).
+
+**Behaviour:** when Enable top-up is ON and `litres_left` stays below `litres_required` for 2 min, HA opens the tap in bursts until the butts are **truly full** after a gap (distance still at/under Max High + 1 cm). Watering always wins: top-up pauses (valve closed) while a watering sequence runs, then resumes.
+
+**Safety budget:** each campaign may add at most **Butt capacity** litres through the valve (and at most **max bursts**). Exceeding either closes the valve, ends the campaign, and turns **Enable top-up OFF** (Telegram). Turn Enable back ON only after you have checked for leaks / sensor faults.
+
 ### Adding these in the UI
 
 1. Restart HA if the package was just deployed (so new entities exist).
@@ -358,6 +387,7 @@ Full view: [`dashboard_garden_water_butts.yaml`](yaml/dashboard_garden_water_but
 | 2026-07-24 | Deployed split-run package; removed old WG from automations/scripts; `ha core check` OK | `yaml/package_water_garden.yaml` -> `/config/packages/water_garden.yaml` |
 | 2026-07-25 | Pump toggle no longer starts sequence; Duration/Pause min 1; Requirement in litres | `package_water_garden.yaml`, `configuration.yaml` templates moved into package |
 | 2026-07-25 | Litres required from red/black dripper counts x Duration | `package_water_garden.yaml` |
+| 2026-07-26 | Staged mains top-up via Outside Tap Valve; auto when not enough; pause for watering | `package_water_butt_topup.yaml` |
 
 ---
 

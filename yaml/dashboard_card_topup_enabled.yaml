@@ -1,0 +1,6 @@
+# Enable/disable staged mains fill. OFF aborts any campaign in progress.
+type: tile
+entity: input_boolean.water_butt_topup_enabled
+name: Enable top-up
+features:
+  - type: toggle

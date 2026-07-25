@@ -1,0 +1,56 @@
+# Garden dashboard - staged mains top-up cards (paste in UI; agents do not edit Lovelace)
+
+type: grid
+cards:
+  - type: tile
+    entity: input_boolean.water_butt_topup_enabled
+    name: Enable top-up
+    features:
+      - type: toggle
+  - type: tile
+    entity: input_button.water_butt_topup_now
+    name: Top-up now
+  - type: tile
+    entity: input_select.water_butt_topup_phase
+    name: Top-up phase
+  - type: tile
+    entity: timer.water_butt_topup_segment
+    name: Top-up segment
+  - type: tile
+    entity: input_number.water_butt_topup_burst_minutes
+    name: Top-up burst (default 30)
+  - type: tile
+    entity: input_number.water_butt_topup_gap_minutes
+    name: Top-up gap (default 210)
+  - type: tile
+    entity: input_number.water_butt_topup_fill_margin_cm
+    name: Fill margin (default 2)
+  - type: tile
+    entity: sensor.water_butt_litres_to_full
+    name: Litres to full
+  - type: tile
+    entity: sensor.water_butt_minutes_to_full
+    name: Minutes to full
+  - type: tile
+    entity: input_number.water_butt_total_capacity_litres
+    name: Butt capacity (L)
+  - type: tile
+    entity: input_number.water_butt_topup_max_bursts
+    name: Top-up max bursts
+  - type: tile
+    entity: sensor.water_butt_topup_campaign_litres
+    name: Campaign litres added
+  - type: tile
+    entity: switch.outside_tap_valve
+    name: Outside Tap Valve
+    features:
+      - type: toggle
+  - type: tile
+    entity: sensor.outside_tap_valve_litres_total
+    name: Tap litres total
+  - type: tile
+    entity: binary_sensor.outside_tap_valve_water_leak
+    name: Tap leak
+  - type: tile
+    entity: binary_sensor.outside_tap_valve_water_supply
+    name: Tap supply
