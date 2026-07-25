@@ -1,0 +1,9 @@
+type: entities
+entities:
+  - entity: sensor.water_garden_litres_used_session
+    name: Last litres used (actual)
+  - entity: input_number.water_garden_session_expected_litres
+    name: Last litres required (expected)
+  - entity: sensor.water_garden_last_usage_delta
+    name: Actual minus expected
+title: Watering use (calibration)

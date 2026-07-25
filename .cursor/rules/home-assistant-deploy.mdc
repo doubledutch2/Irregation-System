@@ -18,3 +18,4 @@ Also:
 - Leave ESPHome / secrets alone unless the user asks.
 - Do not rename `switch.study_water_pump` unless asked.
 - Do not commit secrets: `ha-backups/` is gitignored (config backups may contain credentials).
+- **Never put `initial:` on package `input_number` / `input_select` helpers the user tunes** (Duration, Pause, dripper counts, Phase, etc.). `initial` can overwrite their live values on reload/restart. Omit `initial` so HA restore keeps what they set.

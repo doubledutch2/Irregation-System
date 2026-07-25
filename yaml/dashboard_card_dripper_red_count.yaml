@@ -1,0 +1,3 @@
+type: tile
+name: Red drippers (2 L/h)
+entity: input_number.water_garden_dripper_red_count

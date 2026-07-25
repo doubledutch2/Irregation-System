@@ -1,0 +1,19 @@
+# Fitted dripper counts - drive Litres Required with Duration.
+# Entity_ids: input_number.water_garden_dripper_red_count /
+#             input_number.water_garden_dripper_black_count
+
+input_number:
+  water_garden_dripper_red_count:
+    name: Red drippers (2 L/h)
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    icon: mdi:water
+  water_garden_dripper_black_count:
+    name: Black drippers (4 L/h)
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    icon: mdi:water

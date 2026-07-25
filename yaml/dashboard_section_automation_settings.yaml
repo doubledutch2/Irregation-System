@@ -22,8 +22,11 @@ cards:
     name: Max Low
     entity: input_number.water_butt_max_low_level
   - type: tile
-    name: Requirement
-    entity: input_number.water_butt_minimum_refill_level
+    name: Red drippers (2 L/h)
+    entity: input_number.water_garden_dripper_red_count
+  - type: tile
+    name: Black drippers (4 L/h)
+    entity: input_number.water_garden_dripper_black_count
   - type: tile
     name: litre/cm
     entity: input_number.water_butt_litres_per_cm

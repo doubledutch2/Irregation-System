@@ -4,12 +4,11 @@
       unit_of_measurement: "L"
       state_class: measurement
       state: >
-        {% set low = states('input_number.water_butt_max_low_level') | float(none) %}
-        {% set high = states('input_number.water_butt_max_high_level') | float(none) %}
-        {% set need_pct = states('sensor.water_butt_minimum_refill') | float(none) %}
-        {% set lpcm = states('input_number.water_butt_litres_per_cm') | float(none) %}
-        {% if none in [low, high, need_pct, lpcm] or (low - high) == 0 %}
+        {% set red = states('input_number.water_garden_dripper_red_count') | float(none) %}
+        {% set black = states('input_number.water_garden_dripper_black_count') | float(none) %}
+        {% set mins = states('input_number.water_garden_duration_minutes') | float(none) %}
+        {% if none in [red, black, mins] %}
           unavailable
         {% else %}
-          {{ ((need_pct / 100) * (low - high) * lpcm) | round(0) }}
+          {{ ((red * 2 + black * 4) * mins / 60) | round(0) }}
         {% endif %}

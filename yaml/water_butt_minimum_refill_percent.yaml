@@ -5,9 +5,11 @@
       state: >
         {% set high = states('input_number.water_butt_max_high_level') | float(none) %}
         {% set low = states('input_number.water_butt_max_low_level') | float(none) %}
-        {% set target = states('input_number.water_butt_minimum_refill_level') | float(none) %}
-        {% if none in [high, low, target] or (low - high) == 0 %}
+        {% set need = states('sensor.water_butt_litres_required') | float(none) %}
+        {% set lpcm = states('input_number.water_butt_litres_per_cm') | float(none) %}
+        {% set capacity = (low - high) * lpcm if none not in [high, low, lpcm] else none %}
+        {% if none in [need, capacity] or capacity == 0 %}
           unavailable
         {% else %}
-          {{ [[((low - target) / (low - high) * 100), 0] | max, 100] | min | round(0) }}
+          {{ [[(need / capacity * 100), 0] | max, 100] | min | round(0) }}
         {% endif %}

@@ -32,9 +32,8 @@
                 message: >-
                   Water Garden first 50% DONE. Level {{
                   states('sensor.water_butt_level') }}%, litres left {{
-                  states('sensor.water_butt_litres_left') }} L, distance {{
-                  states('sensor.ultrasonic_waterbutt') | float(0) | round(1)
-                  }} cm. Pausing {{ states('input_number.water_garden_pause_minutes')
+                  states('sensor.water_butt_litres_left') }} L. Pausing {{
+                  states('input_number.water_garden_pause_minutes')
                   }} min for butts to rebalance.
             - action: timer.start
               target:
@@ -68,8 +67,7 @@
                 message: >-
                   Water Garden second 50% START. Level {{
                   states('sensor.water_butt_level') }}%, litres left {{
-                  states('sensor.water_butt_litres_left') }} L, distance {{
-                  states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }} cm.
+                  states('sensor.water_butt_litres_left') }} L.
         - conditions:
             - condition: state
               entity_id: input_select.water_garden_phase
@@ -88,8 +86,7 @@
                 message: >-
                   Water Garden second 50% DONE (run complete). Level {{
                   states('sensor.water_butt_level') }}%, litres left {{
-                  states('sensor.water_butt_litres_left') }} L, distance {{
-                  states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }} cm.
+                  states('sensor.water_butt_litres_left') }} L.
       default:
         - action: notify.notifier_telegram_leon
           data:

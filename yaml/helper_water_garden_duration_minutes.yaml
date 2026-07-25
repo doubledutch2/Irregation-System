@@ -1,13 +1,9 @@
-# Create via Settings -> Devices & services -> Helpers, or include under input_number: in a package.
-# After create, entity_id must be: input_number.water_garden_duration_minutes
-
 input_number:
   water_garden_duration_minutes:
     name: Water Garden Duration
-    min: 10
+    min: 1
     max: 180
-    step: 5
+    step: 1
     unit_of_measurement: "min"
-    initial: 60
     mode: box
     icon: mdi:timer-outline

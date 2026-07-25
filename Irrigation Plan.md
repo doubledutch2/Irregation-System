@@ -58,13 +58,23 @@ If the far west end is weak on test, use **Option B** in section 7b (East and We
 
 ## 3. Plant count -> water budget (single zone)
 
-Counted **drawn plant icons** on the plan (not name labels). Excluded lavender band and cobbles. **Install status (Jul 2026):** Stage 1 **40** fitted and working; Stage 2 adding **~40 more** -> **~80** total.
+Counted **drawn plant icons** on the plan (not name labels). Excluded lavender band and cobbles.
+
+**Dripper stock (Jul 2026):** bought spare capacity so leftovers show what was fitted.
+
+| | **2 L/h (red)** | **4 L/h (black)** | Total |
+|--|----------------:|------------------:|------:|
+| **Bought** | **80** | **60** | 140 |
+| **Fitted (current)** | **57** | **31** | 88 |
+| **Left in stock** | **23** | **29** | 52 |
+
+Fitted flow: 57x2 + 31x4 = **~238 L/h** (matches the ~240 L/h design point). More can still be added from stock if needed.
 
 | Build | Emitters | Flow |
 |-------|----------|------|
-| Stage 1 (fitted) | **20x 2 L/h** + **20x 4 L/h** | **~120 L/h** |
-| Stage 2 (adding) | **~+40** (favour **2 L/h** for ground cover / smaller plants) | **~+80-120 L/h** |
-| **Target total** | **~80** | **~240 L/h** |
+| Stage 1 (early) | 20x 2 L/h + 20x 4 L/h | ~120 L/h |
+| **Current install** | **57x 2 L/h + 31x 4 L/h** | **~238 L/h** |
+| Stock remaining | 23x 2 L/h + 29x 4 L/h | (available to fit later) |
 
 | Run time @ ~240 L/h | Water used | vs ~800 L store |
 |---------------------|------------|-----------------|
@@ -369,7 +379,7 @@ Optional: keep the owned **13 mm flow-control valve** as a manual isolate for ma
 
 ## 5e. Commissioning - prove the hub before finishing drippers
 
-**Install status (Jul 2026):** spine + Gardena + **40 drippers** working (orientation fixed). Adding ~**40 more** (~80 / ~240 L/h). Cup-test: open 4 mm pours; fitted dripper is a **slow** drip (~2 L/h red ~ 30-40 ml/min). Far-end power still good - re-test after Stage 2.
+**Install status (Jul 2026):** spine + Gardena working. Drippers fitted: **57x 2 L/h + 31x 4 L/h** (~238 L/h). Stock bought: **80x 2 L/h + 60x 4 L/h** (count leftovers to know what was used). Cup-test: open 4 mm pours; fitted dripper is a **slow** drip (~2 L/h red ~ 30-40 ml/min). Re-cup-test far west after any further adds.
 
 ### Test order
 
@@ -916,7 +926,7 @@ NEVER: twice in one day / empty butts dry / pump off with solenoid stuck open
 
 ## 11. Shopping - **ordered 18 Jul 2026**
 
-Amazon order **placed** (~**GBP161** items + ~GBP2 postage). Delivery windows **19-23 Jul 2026**. Scaled build: **40 PC drippers** (20x2 L/h + 20x4 L/h ~ **120 L/h**).
+Amazon order **placed** (~**GBP161** items + ~GBP2 postage). Delivery windows **19-23 Jul 2026**. Early cart was scaled to 40 PC drippers; **later stock bought for the full garden: 80x CETA 2 L/h + 60x CETA 4 L/h** (not all fitted - leftovers = unused count; see section 3 inventory).
 
 ### Owned (not in this Amazon order)
 
@@ -953,7 +963,7 @@ Amazon order **placed** (~**GBP161** items + ~GBP2 postage). Delivery windows **
 |------|-------|
 | **NC 230 V brass solenoid 1/2"** | Siphon stop - [B09Y45K21L](https://www.amazon.co.uk/dp/B09Y45K21L); wire with Zigbee (section 5d (Siphon / NC solenoid)). **1/2" female brass connectors** owned |
 | **IP65/55 outdoor boxes** | Split + sensor + solenoid coil - owned (section 5g (Outdoor electrical enclosures)); assign as documented |
-| **~40 more CETA PC drippers** | Stage 2 -> ~80 total; favour **2 L/h** for ground cover / smaller plants |
+| **CETA PC drippers (stock)** | Bought **80x 2 L/h + 60x 4 L/h**; fitted 57+31; remainder on shelf for extras / spares (section 3) |
 | Extra **4 mm micro tube** | If 50 m runs short for ~80 drops - get **100 m** total |
 | **4 mm in-line shut-off valves** | Only on outlets you may isolate later (section 5h (Per-dripper shut-offs)) |
 | **1" BSP female -> hose barb** x2 | KATSU bridges if still needed |
@@ -1236,7 +1246,7 @@ See **section 11 (Shopping) ordered table** above. Key ASINs for re-orders/spare
 | Gutter fill line | **32 mm** flex pond hose (10 m) diverter -> butt - not 16 mm LDPE |
 | Blanking old butt holes | **M12 bolt + rubber washers** sandwich for ~20 mm holes |
 | Butt capacity | **4x200 L ~ 800 L** now; optional **+4 -> ~1600 L** for drought buffer (section 5f (Water butts / catchment)) |
-| Emitters (install) | **~80 PC drippers** target (~240 L/h); Stage 1 was 40 |
+| Emitters (install) | **57x 2 L/h + 31x 4 L/h** fitted (~238 L/h); stock bought **80x 2 + 60x 4** |
 | Roof catchment | **Two SE downpipes** -> butts; ~60-90 m2 plan area - fills store after useful rain (section 5f (Water butts / catchment)) |
 | Outdoor electrics | Zigbee splits in IP65 box to Katsu + solenoid; separate IP65 for 12 V sensor; small box for solenoid spades only (section 5g (Outdoor electrical enclosures)) |
 | Per-plant shut-off | Optional **4 mm barbed valves** on selected drops (section 5h (Per-dripper shut-offs)) |
@@ -1252,7 +1262,7 @@ See **section 11 (Shopping) ordered table** above. Key ASINs for re-orders/spare
 - Hub: G -> KATSU -> Gardena -> **NC solenoid** - prove no leaks; plug OFF stops all flow  
 - Outdoor boxes wired (section 5g (Outdoor electrical enclosures)); solenoid spades sealed  
 - Calibrate AJ-SR04M empty/full distances in ESPHome  
-- Stage 2 drippers; cup-test **far west** after ~80 live  
+- Dripper inventory: bought 80x2 + 60x4; fitted 57+31; cup-test **far west** after any further adds
 - Ground cover: spaced drippers + optional 4 mm valves (section 5h (Per-dripper shut-offs))  
 - Thames Water ban / float-valve / extra butts (section 5f (Water butts / catchment))  
 

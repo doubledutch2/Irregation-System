@@ -9,5 +9,4 @@ input_select:
       - first_half
       - pause
       - second_half
-    initial: idle
     icon: mdi:state-machine

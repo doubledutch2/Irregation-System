@@ -17,6 +17,7 @@
 2. Backup every remote file before editing; also store copies under `ha-backups/YYYY-MM-DD/` on this computer (gitignored).
 3. Put Water Garden HA config in `/config/packages/` only.
 4. Run `ha core check` as the test deploy; **never restart HA** - the user restarts manually.
+5. Never put `initial:` on package helpers the user tunes (Duration, Pause, dripper counts, Phase) - it can overwrite live values on reload/restart.
 
 See Cursor rule `.cursor/rules/home-assistant-deploy.mdc` and [`HA Update Guide.md`](HA%20Update%20Guide.md).
 
@@ -57,15 +58,15 @@ tap_action:
 
 4. Put it near the top of the screen. Save.
 
-**What she should see after one press:**
+**What happens after one press:**
 
-| Result | On-screen notification title | Meaning |
-|--------|------------------------------|---------|
-| OK | **Watering started - OK** | Run started; will pause halfway then finish |
-| Already running | **Watering not started** | Safe to ignore - already watering |
-| Butts empty | **Watering not started** | Top up butts, then press again |
+| Result | Feedback |
+|--------|----------|
+| OK | Sequence starts; Telegram gets the detailed start message |
+| Already running | Telegram: start ignored |
+| Butts empty | Telegram: start blocked; pump left off |
 
-Notifications appear in the HA bell / notifications area. Telegram still gets the detailed calibration messages.
+No Home Assistant persistent/bell notifications for Water Garden (Telegram only).
 
 **Important:** call `script.water_garden_start` directly (as above). Do not use a two-step "press helper then confirm" card.
 
@@ -74,7 +75,7 @@ Notifications appear in the HA bell / notifications area. Telegram still gets th
 | Card | Entity | Name on dashboard | Role |
 |------|--------|-------------------|------|
 | Tile | `input_button.water_garden_start` | Start watering | Starts the split-run (50% / pause / 50%) |
-| Tile + toggle | `switch.study_water_pump` | Pump | Live pump power; ON while idle also starts a run; OFF during a half aborts |
+| Tile + toggle | `switch.study_water_pump` | Pump | Manual pump power only - does **not** start the watering sequence. OFF during a sequence half still aborts the sequence. |
 | Tile | `input_select.water_garden_phase` | Phase | Shows `idle` / `first_half` / `pause` / `second_half` |
 | Tile | `timer.water_garden_segment` | Segment timer | Countdown for the current half or pause |
 
@@ -86,21 +87,32 @@ Notifications appear in the HA bell / notifications area. Telegram still gets th
 | Gauge | `sensor.water_butt_level` | Water Butt Level | Fill % of usable range (0-100) |
 | Markdown alert | compares `sensor.water_butt_level` to `sensor.water_butt_minimum_refill` | (under gauge) | Red if not enough to water; green if enough |
 | Entities | `sensor.water_butt_litres_left` | Litres left | Usable litres remaining |
-| Entities | `sensor.water_butt_litres_required` | Litres required for garden | Litres implied by minimum refill setpoint |
+| Entities | `sensor.water_butt_litres_required` | Litres required for garden | Calculated: `(red x 2 + black x 4) x Duration/60` |
+| Entities (optional) | `sensor.water_garden_flow` | Flow | Calculated L/h from dripper counts |
+| Entities | `sensor.water_garden_litres_used_session` | Last litres used (actual) | Live: `(current_cm - start_cm) x L/cm` from last Start; check after butts equalise |
+| Entities | `input_number.water_garden_session_expected_litres` | Last litres required (expected) | Snapshot of Litres required at sequence start |
+| Entities (optional) | `sensor.water_garden_last_usage_delta` | Last watering vs required | actual - expected (L); positive = used more than expected |
 
 ### Section - Automation Settings
 
 | Card | Entity | Name on dashboard | Role |
 |------|--------|-------------------|------|
 | Heading | - | Automation Settings | Section title |
-| Tile | `input_number.water_garden_duration_minutes` | Duration (min) | Total pump-on time (default 60; set 90 for longer soak) |
-| Tile | `input_number.water_garden_pause_minutes` | Pause (min) | Off time between halves (default 15) |
+| Tile | `input_number.water_garden_duration_minutes` | Duration (min) | Total pump-on time; also drives Litres required |
+| Tile | `input_number.water_garden_pause_minutes` | Pause (min) | Off time between halves (min **1**; default 15) |
+| Tile | `input_number.water_garden_dripper_red_count` | Red drippers (2 L/h) | Fitted count - update when you add/remove reds |
+| Tile | `input_number.water_garden_dripper_black_count` | Black drippers (4 L/h) | Fitted count - update when you add/remove blacks |
 | Tile | `sensor.rain_minutes_today` | Rain today | Display only (no auto skip yet) |
 | Tile | `sensor.ultrasonic_waterbutt` | Level | Raw distance cm from lid sensor to water |
 | Tile | `input_number.water_butt_max_high_level` | Max High | Calibration: cm when butts full |
 | Tile | `input_number.water_butt_max_low_level` | Max Low | Calibration: cm when pump will run dry |
-| Tile | `input_number.water_butt_minimum_refill_level` | Requirement | Calibration: cm still enough for next cycle |
 | Tile | `input_number.water_butt_litres_per_cm` | litre/cm | Calibration: litres per 1 cm level change |
+
+**Litres required formula:** `(Red x 2 + Black x 4) x (Duration minutes / 60)`. Example: 57 red + 31 black, Duration 60 -> `(114+124) x 1 = 238 L`.
+
+**Actual litres used (last sequence):** at Start, HA stores the ultrasonic distance (cm) and expected litres. **Last litres used (actual)** is a live sensor: `(current_cm - start_cm) x litres_per_cm` (distance rises as the butts empty). It is not sent on Telegram - check the dashboard after the butts equalise (e.g. an hour later). It keeps updating until the next Start.
+
+**Dashboard change:** remove the old **Requirement (L)** / cm requirement tiles if still present. Add **Red drippers** and **Black drippers** tiles. Keep **Litres required for garden** as a read-only sensor. Add **Last litres used (actual)** and **Last litres required (expected)** for calibration (`yaml/dashboard_card_watering_usage.yaml`).
 
 ### Adding these in the UI
 
@@ -120,7 +132,7 @@ No calendar schedule and no rain-skip automation for now.
 1. Run the pump for **50%** of `input_number.water_garden_duration_minutes` (default **60** min -> **30** min).
 2. Stop for `input_number.water_garden_pause_minutes` (default **15** min) so linked butts can rebalance.
 3. Run the pump for the remaining **50%**.
-4. After **each** 50% watering segment, Telegram with **level %**, **litres left**, and distance cm (for calibration).
+4. After **each** 50% watering segment, Telegram with **level %** and **litres left** (no distance cm).
 
 **Restart safety:** phase is stored in `input_select.water_garden_phase`; segment timing uses `timer.water_garden_segment` with **restore: true**. A recover automation re-syncs the pump after HA start if needed.
 
@@ -184,7 +196,8 @@ Update the Garden / `water-butts` view from [`dashboard_garden_water_butts.yaml`
 
 | Concern | HA role |
 |---------|---------|
-| Start watering | Button or pump ON while idle -> split-run sequence |
+| Start watering | **Start Watering** button/script only -> split-run sequence |
+| Manual pump | `switch.study_water_pump` on/off alone - no sequence |
 | Run length | `input_number.water_garden_duration_minutes` split into two halves |
 | Rebalance pause | `input_number.water_garden_pause_minutes` (default 15) |
 | Stop / abort | Pump OFF during a half, low-water, or stop script |
@@ -240,7 +253,10 @@ Distance = **cm from top sensor to water** (larger cm = lower water).
 | Litres per cm | `input_number.water_butt_litres_per_cm` | Litres for a 1 cm level change across the linked bank |
 | Max High Level | `input_number.water_butt_max_high_level` | cm when full |
 | Max Low Level | `input_number.water_butt_max_low_level` | cm when pump will run dry |
-| Minimum Refill Level | `input_number.water_butt_minimum_refill_level` | cm still enough for next cycle |
+| Requirement (litres) | `sensor.water_butt_litres_required` | Calculated from red/black counts x Duration |
+| Red drippers (2 L/h) | `input_number.water_garden_dripper_red_count` | Fitted red count (default 57) |
+| Black drippers (4 L/h) | `input_number.water_garden_dripper_black_count` | Fitted black count (default 31) |
+| Minimum Refill Level (legacy cm) | `input_number.water_butt_minimum_refill_level` | Old cm setpoint - unused |
 
 ### Template sensors
 
@@ -269,7 +285,7 @@ Distance = **cm from top sensor to water** (larger cm = lower water).
 
 | Script | Behaviour | YAML |
 |--------|-----------|------|
-| `script.water_garden_start` | If idle and not dry: set `first_half`, pump ON, start half-duration timer, Telegram start (level %, litres, cm). Blocks start if already running or water too low (turns pump off if needed). | [`script_water_garden_start.yaml`](yaml/script_water_garden_start.yaml) |
+| `script.water_garden_start` | If idle and not dry: set `first_half`, pump ON, start half-duration timer, Telegram start (level %, litres). Blocks start if already running or water too low (turns pump off if needed). | [`script_water_garden_start.yaml`](yaml/script_water_garden_start.yaml) |
 | `script.water_garden_stop` | Cancel timer, phase `idle`, pump OFF, one Telegram (optional `reason` field). | [`script_water_garden_stop.yaml`](yaml/script_water_garden_stop.yaml) |
 
 ---
@@ -335,6 +351,8 @@ Full view: [`dashboard_garden_water_butts.yaml`](yaml/dashboard_garden_water_but
 | 2026-07-24 | Split-run design (50/pause/50), duration helper, restart-safe timer, automation fixes | `helper_water_garden_*.yaml`, `script_water_garden_*.yaml`, `automation_water_garden_*.yaml`, dashboard updates |
 | 2026-07-24 | HA host: removed `packages/battery_alert.yaml`; enabled `homeassistant.packages`; `ha core check` OK | host `/config` |
 | 2026-07-24 | Deployed split-run package; removed old WG from automations/scripts; `ha core check` OK | `yaml/package_water_garden.yaml` -> `/config/packages/water_garden.yaml` |
+| 2026-07-25 | Pump toggle no longer starts sequence; Duration/Pause min 1; Requirement in litres | `package_water_garden.yaml`, `configuration.yaml` templates moved into package |
+| 2026-07-25 | Litres required from red/black dripper counts x Duration | `package_water_garden.yaml` |
 
 ---
 

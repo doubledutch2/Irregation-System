@@ -1,13 +1,9 @@
-# Pause between the two 50% watering halves (butts rebalance).
-# Entity_id must be: input_number.water_garden_pause_minutes
-
 input_number:
   water_garden_pause_minutes:
     name: Water Garden Pause
-    min: 5
+    min: 1
     max: 60
-    step: 5
+    step: 1
     unit_of_measurement: "min"
-    initial: 15
     mode: box
     icon: mdi:timer-pause-outline

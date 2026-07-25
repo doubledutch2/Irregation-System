@@ -1,0 +1,13 @@
+- sensor:
+    - name: "Water Garden Flow"
+      unique_id: water_garden_flow_lph
+      unit_of_measurement: "L/h"
+      state_class: measurement
+      state: >
+        {% set red = states('input_number.water_garden_dripper_red_count') | float(none) %}
+        {% set black = states('input_number.water_garden_dripper_black_count') | float(none) %}
+        {% if none in [red, black] %}
+          unavailable
+        {% else %}
+          {{ (red * 2 + black * 4) | round(0) }}
+        {% endif %}

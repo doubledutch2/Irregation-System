@@ -26,6 +26,5 @@ sequence:
       message: >-
         Water Garden {{ reason | default('STOP / abort') }}. Level {{
         states('sensor.water_butt_level') }}%, litres left {{
-        states('sensor.water_butt_litres_left') }} L, distance {{
-        states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }} cm.
+        states('sensor.water_butt_litres_left') }} L.
 mode: single

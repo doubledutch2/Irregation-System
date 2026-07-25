@@ -1,6 +1,6 @@
 # Add this card near the top of the main Newbury view (path: default_view).
 # One tap runs script.water_garden_start directly (no second confirm step).
-# After press, HA shows a notification: "Watering started - OK" (or why it did not start).
+# Feedback is via Telegram only.
 
 type: button
 name: Start Watering

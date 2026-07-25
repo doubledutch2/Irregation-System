@@ -20,9 +20,10 @@
     - action: notify.notifier_telegram_leon
       data:
         message: >-
-          {% set level = states('sensor.ultrasonic_waterbutt') | float(0) | round(1) %}
+          {% set left = states('sensor.water_butt_litres_left') %}
           {% if trigger.id == 'full' %}
-          Water butt is full ({{ level }} cm)
+          Water butt is full ({{ left }} L left; level {{ states('sensor.water_butt_level') }}%)
           {% else %}
-          Water butt has enough for tomorrow ({{ level }} cm)
+          Water butt has enough for next watering ({{ left }} L left; need {{
+          states('sensor.water_butt_litres_required') }} L for current Duration)
           {% endif %}
