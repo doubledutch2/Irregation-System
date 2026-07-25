@@ -1,0 +1,4 @@
+# Force-start a staged top-up campaign while idle (Enable top-up must be ON).
+type: tile
+entity: input_button.water_butt_topup_now
+name: Top-up now

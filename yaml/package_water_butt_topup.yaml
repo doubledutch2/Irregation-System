@@ -74,6 +74,14 @@ input_number:
     unit_of_measurement: "m³/h"
     mode: box
     icon: mdi:water-pump
+  water_butt_topup_battery_low_percent:
+    name: Tap battery low at
+    min: 5
+    max: 50
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+    icon: mdi:battery-alert
 
 input_select:
   water_butt_topup_phase:
@@ -666,7 +674,7 @@ automation:
 
   - id: water_butt_topup_seed_capacity
     alias: Water butt top-up - Seed capacity helpers if unset
-    description: Set capacity 630 L and max bursts 15 when still unset (every HA start).
+    description: Set capacity 630 L, max bursts 15, battery low 20% when still unset.
     mode: single
     triggers:
       - trigger: homeassistant
@@ -697,6 +705,18 @@ automation:
               entity_id: input_number.water_butt_topup_max_bursts
             data:
               value: 15
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_topup_battery_low_percent') in
+              ['unknown', 'unavailable', 'none', '']
+              or states('input_number.water_butt_topup_battery_low_percent') | float(0) == 0 }}
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_topup_battery_low_percent
+            data:
+              value: 20
 
   - id: water_butt_topup_capacity_budget
     alias: Water butt top-up - Capacity budget exceeded
@@ -768,6 +788,7 @@ automation:
 
   - id: water_butt_topup_now_button
     alias: Water butt top-up - Now button
+    description: Force-start a staged top-up campaign while idle (Enable top-up must be ON).
     mode: single
     triggers:
       - trigger: state
@@ -1013,3 +1034,30 @@ automation:
             sequence:
               - action: script.water_butt_topup_resume_after_watering
                 data: {}
+
+  - id: water_butt_topup_battery_low
+    alias: Water butt top-up - Battery low Telegram
+    description: >-
+      Alert when Outside Tap Valve battery is below threshold (default 20%).
+      Reminds every 6 hours until batteries are replaced.
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.outside_tap_valve_battery
+        below: input_number.water_butt_topup_battery_low_percent
+        for: "00:02:00"
+      - trigger: time_pattern
+        hours: "/6"
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.outside_tap_valve_battery
+        below: input_number.water_butt_topup_battery_low_percent
+    actions:
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Outside Tap Valve battery LOW: {{
+            states('sensor.outside_tap_valve_battery') | float(0) | round(0)
+            }}% (threshold {{
+            states('input_number.water_butt_topup_battery_low_percent') | float(20) | round(0)
+            }}%). Replace batteries. Reminder every 6h until fixed.

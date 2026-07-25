@@ -49,6 +49,12 @@ cards:
     entity: sensor.outside_tap_valve_litres_total
     name: Tap litres total
   - type: tile
+    entity: sensor.outside_tap_valve_battery
+    name: Tap battery
+  - type: tile
+    entity: input_number.water_butt_topup_battery_low_percent
+    name: Battery low at (%)
+  - type: tile
     entity: binary_sensor.outside_tap_valve_water_leak
     name: Tap leak
   - type: tile

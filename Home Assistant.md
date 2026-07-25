@@ -124,7 +124,7 @@ Package: [`yaml/package_water_butt_topup.yaml`](yaml/package_water_butt_topup.ya
 | Card | Entity | Name on dashboard | Role |
 |------|--------|-------------------|------|
 | Tile + toggle | `input_boolean.water_butt_topup_enabled` | Enable top-up | Master enable/disable for fill logic. OFF aborts any campaign. [`dashboard_card_topup_enabled.yaml`](yaml/dashboard_card_topup_enabled.yaml) |
-| Tile | `input_button.water_butt_topup_now` | Top-up now | Force-start a campaign while idle |
+| Tile | `input_button.water_butt_topup_now` | Top-up now | Force-start a staged campaign while idle (Enable top-up must be ON). Not a valve switch — use Outside Tap Valve for that. |
 | Tile | `input_select.water_butt_topup_phase` | Top-up phase | `idle` / `burst` / `settling` / `paused` |
 | Tile | `timer.water_butt_topup_segment` | Top-up segment | Burst or gap countdown |
 | Tile | `input_number.water_butt_topup_burst_minutes` | Top-up burst (min) | Valve open time (default **30** if unset) |
@@ -137,6 +137,8 @@ Package: [`yaml/package_water_butt_topup.yaml`](yaml/package_water_butt_topup.ya
 | Tile | `sensor.water_butt_topup_campaign_litres` | Campaign litres added | Litres through valve since this campaign started |
 | Tile + toggle | `switch.outside_tap_valve` | Outside Tap Valve | Manual override / visibility |
 | Tile | `sensor.outside_tap_valve_litres_total` | Tap litres total | Lifetime litres through the valve (never resets). Add after restart. |
+| Tile | `sensor.outside_tap_valve_battery` | Tap battery | Zigbee battery % |
+| Tile | `input_number.water_butt_topup_battery_low_percent` | Battery low at (%) | Telegram alert threshold (default **20**). Reminds every 6h while below. |
 | Tile | `binary_sensor.outside_tap_valve_water_leak` | Tap leak | Safety trip + disables top-up |
 | Tile | `binary_sensor.outside_tap_valve_water_supply` | Tap supply | Skip burst if off |
 
