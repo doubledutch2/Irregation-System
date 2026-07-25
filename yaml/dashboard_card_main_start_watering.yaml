@@ -1,11 +1,10 @@
-# Add this card near the top of the main Newbury view (path: default_view).
-# One tap runs script.water_garden_start directly (no second confirm step).
-# Feedback is via Telegram only.
+# Preferred Start Watering control - real ON/OFF toggle.
+# ON while phase is first_half / pause / second_half; OFF when idle.
+# Turn ON -> start sequence; turn OFF -> stop sequence.
+# Add as Tile (with toggle) on Garden or Newbury.
 
-type: button
+type: tile
+entity: switch.water_garden_watering
 name: Start Watering
-icon: mdi:sprinkler-variant
-show_state: false
-tap_action:
-  action: perform-action
-  perform_action: script.water_garden_start
+features:
+  - type: toggle

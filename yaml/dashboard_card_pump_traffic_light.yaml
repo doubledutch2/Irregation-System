@@ -1,0 +1,21 @@
+# Pump running traffic light - add near the Pump tile on Garden / Newbury.
+# Same style as the water-butt enough/not-enough alert.
+# Green = pump ON; Red = pump OFF.
+
+type: markdown
+title: Pump
+content: >
+  {% if is_state('switch.study_water_pump', 'on') %}
+
+  <ha-alert alert-type="success">Pump RUNNING{% if
+  states('input_select.water_garden_phase') in ['first_half',
+  'second_half'] %} ({{ states('input_select.water_garden_phase')
+  }}){% endif %}</ha-alert>
+
+  {% else %}
+
+  <ha-alert alert-type="error">Pump OFF{% if
+  is_state('input_select.water_garden_phase', 'pause') %} (pause —
+  butts rebalancing){% endif %}</ha-alert>
+
+  {% endif %}

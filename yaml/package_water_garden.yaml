@@ -179,6 +179,20 @@ template:
              and states('input_number.water_butt_max_high_level') not in ['unknown', 'unavailable']
              and states('input_number.water_butt_max_low_level') not in ['unknown', 'unavailable'] }}
 
+  - switch:
+      - name: "Start Watering"
+        unique_id: water_garden_watering
+        default_entity_id: switch.water_garden_watering
+        icon: mdi:sprinkler-variant
+        state: "{{ not is_state('input_select.water_garden_phase', 'idle') }}"
+        turn_on:
+          - action: script.water_garden_start
+            data: {}
+        turn_off:
+          - action: script.water_garden_stop
+            data:
+              reason: STOP - Start Watering toggled off
+
 script:
   water_garden_start:
     alias: Start Watering
@@ -257,6 +271,7 @@ script:
       Abort or finish-cleanup - cancel segment timer, set phase idle, ensure pump off,
       one Telegram message. Optional field "reason" for the notify text.
       Actual litres used stays on the dashboard (live sensor) so butts can equalise first.
+      No-op if already idle (avoids duplicate Telegram from toggle sync).
     mode: single
     fields:
       reason:
@@ -266,6 +281,12 @@ script:
         selector:
           text:
     sequence:
+      - if:
+          - condition: state
+            entity_id: input_select.water_garden_phase
+            state: idle
+        then:
+          - stop: ""
       - action: timer.cancel
         target:
           entity_id: timer.water_garden_segment
@@ -288,19 +309,27 @@ automation:
   - id: "1784746590314"
     alias: Water Garden Start
     description: >-
-      Starts the split-run sequence only from Start Watering (button/script).
-      Pump toggle alone does not start the sequence - it only powers the pump.
+      Legacy input_button Start Watering: idle -> start, otherwise stop (toggle).
+      Prefer switch.water_garden_watering on the dashboard. Pump toggle alone does
+      not start the sequence.
     mode: single
     triggers:
       - trigger: state
         entity_id: input_button.water_garden_start
-    conditions:
-      - condition: state
-        entity_id: input_select.water_garden_phase
-        state: idle
+    conditions: []
     actions:
-      - action: script.water_garden_start
-        data: {}
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_garden_phase
+                state: idle
+            sequence:
+              - action: script.water_garden_start
+                data: {}
+        default:
+          - action: script.water_garden_stop
+            data:
+              reason: STOP - Start Watering pressed again
 
   - id: "1784825343018"
     alias: Water Garden - Stop

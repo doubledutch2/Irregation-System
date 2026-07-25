@@ -9,8 +9,10 @@
       - type: grid
         cards:
           - type: tile
-            entity: input_button.water_garden_start
-            name: Start watering
+            entity: switch.water_garden_watering
+            name: Start Watering
+            features:
+              - type: toggle
           - type: tile
             entity: switch.study_water_pump
             name: Pump
@@ -22,6 +24,23 @@
           - type: tile
             name: Segment timer
             entity: timer.water_garden_segment
+          - type: markdown
+            title: Pump
+            content: >
+              {% if is_state('switch.study_water_pump', 'on') %}
+
+              <ha-alert alert-type="success">Pump RUNNING{% if
+              states('input_select.water_garden_phase') in ['first_half',
+              'second_half'] %} ({{ states('input_select.water_garden_phase')
+              }}){% endif %}</ha-alert>
+
+              {% else %}
+
+              <ha-alert alert-type="error">Pump OFF{% if
+              is_state('input_select.water_garden_phase', 'pause') %} (pause —
+              butts rebalancing){% endif %}</ha-alert>
+
+              {% endif %}
       - type: grid
         cards:
           - type: heading

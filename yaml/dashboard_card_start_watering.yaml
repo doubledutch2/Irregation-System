@@ -1,3 +1,5 @@
 type: tile
-entity: input_button.water_garden_start
-name: Start watering
+entity: switch.water_garden_watering
+name: Start Watering
+features:
+  - type: toggle

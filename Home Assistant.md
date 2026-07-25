@@ -40,44 +40,47 @@ Entities below come from package `/config/packages/water_garden.yaml` (repo: [`y
 
 ### Main screen (Newbury) - Start Watering for everyone
 
-Add a single big button on the **Newbury** home view (`default_view`) so watering is one tap (no Garden page, no confirm dialog).
+Add a **toggle** on the **Newbury** home view (`default_view`) so watering is one tap to start and one tap to stop.
 
 1. Open **Newbury** -> Edit dashboard.
-2. **Add card** -> **Button** (or Manual / YAML card).
+2. Replace the old Start Watering **button** (or add a new **Tile** card).
 3. Paste from [`yaml/dashboard_card_main_start_watering.yaml`](yaml/dashboard_card_main_start_watering.yaml):
 
 ```yaml
-type: button
+type: tile
+entity: switch.water_garden_watering
 name: Start Watering
-icon: mdi:sprinkler-variant
-show_state: false
-tap_action:
-  action: perform-action
-  perform_action: script.water_garden_start
+features:
+  - type: toggle
 ```
 
 4. Put it near the top of the screen. Save.
 
-**What happens after one press:**
+**What the toggle does:**
 
-| Result | Feedback |
-|--------|----------|
-| OK | Sequence starts; Telegram gets the detailed start message |
-| Already running | Telegram: start ignored |
-| Butts empty | Telegram: start blocked; pump left off |
+| Action | Result |
+|--------|--------|
+| Turn **ON** | Starts the split-run; Telegram start message |
+| Turn **OFF** (while running or paused) | Stops the sequence; pump off; Telegram stop |
+| Stays **ON** during pause | Sequence still active (butts rebalancing) |
+| Goes **OFF** by itself | When the run finishes normally |
+| Butts empty | Start blocked; toggle stays/returns **OFF**; Telegram |
+
+Entity: `switch.water_garden_watering` (follows phase: on whenever not `idle`).
 
 No Home Assistant persistent/bell notifications for Water Garden (Telegram only).
 
-**Important:** call `script.water_garden_start` directly (as above). Do not use a two-step "press helper then confirm" card.
+**Important:** use `switch.water_garden_watering`, not the pump switch and not a script-only button. The old `input_button.water_garden_start` still toggles start/stop if you keep that tile.
 
 ### Section - run controls
 
 | Card | Entity | Name on dashboard | Role |
 |------|--------|-------------------|------|
-| Tile | `input_button.water_garden_start` | Start watering | Starts the split-run (50% / pause / 50%) |
+| Tile + toggle | `switch.water_garden_watering` | Start Watering | ON starts sequence; OFF stops. Shows on for first_half / pause / second_half. |
 | Tile + toggle | `switch.study_water_pump` | Pump | Manual pump power only - does **not** start the watering sequence. OFF during a sequence half still aborts the sequence. |
 | Tile | `input_select.water_garden_phase` | Phase | Shows `idle` / `first_half` / `pause` / `second_half` |
 | Tile | `timer.water_garden_segment` | Segment timer | Countdown for the current half or pause |
+| Markdown alert | `switch.study_water_pump` (+ phase) | Pump | Green = RUNNING; red = OFF (notes pause if rebalancing). [`dashboard_card_pump_traffic_light.yaml`](yaml/dashboard_card_pump_traffic_light.yaml) |
 
 ### Section - Water Butt Gauge
 
@@ -156,7 +159,8 @@ Short summary of intended end state:
 | Pause | `input_number.water_garden_pause_minutes` | 15 | [`helper_water_garden_pause_minutes.yaml`](yaml/helper_water_garden_pause_minutes.yaml) |
 | Phase | `input_select.water_garden_phase` | idle (options: idle, first_half, pause, second_half) | [`helper_water_garden_phase.yaml`](yaml/helper_water_garden_phase.yaml) |
 | Segment timer | `timer.water_garden_segment` | restore enabled | [`helper_timer_water_garden_segment.yaml`](yaml/helper_timer_water_garden_segment.yaml) |
-| Start button | `input_button.water_garden_start` | - | [`helper_water_garden_start_button.yaml`](yaml/helper_water_garden_start_button.yaml) |
+| Start toggle | `switch.water_garden_watering` | ON starts / OFF stops (preferred) | [`dashboard_card_main_start_watering.yaml`](yaml/dashboard_card_main_start_watering.yaml) |
+| Start button (legacy) | `input_button.water_garden_start` | Also toggles start/stop | [`helper_water_garden_start_button.yaml`](yaml/helper_water_garden_start_button.yaml) |
 
 UI path: **Settings -> Devices & services -> Helpers -> Create helper**. Match entity IDs exactly (or rename after create). For the timer, enable restore if the UI offers it.
 
@@ -213,7 +217,7 @@ Update the Garden / `water-butts` view from [`dashboard_garden_water_butts.yaml`
 |------|----------------|------|
 | Zigbee plug (pump + solenoid) | `switch.study_water_pump` | *device config pending* |
 | Water-butt distance | `sensor.ultrasonic_waterbutt` - **cm** (see ESPHome below) | [`esphome_esp_home_waterbutt.yaml`](yaml/esphome_esp_home_waterbutt.yaml) |
-| Start / stop scripts | `script.water_garden_start`, `script.water_garden_stop` | [`script_water_garden_start.yaml`](yaml/script_water_garden_start.yaml), [`script_water_garden_stop.yaml`](yaml/script_water_garden_stop.yaml) |
+| Start / stop | `switch.water_garden_watering`, `script.water_garden_start`, `script.water_garden_stop` | Toggle preferred; scripts underneath | [`dashboard_card_main_start_watering.yaml`](yaml/dashboard_card_main_start_watering.yaml) |
 | Telegram | `notify.notifier_telegram_leon` | *pending* |
 | Rain today | `sensor.rain_minutes_today` - display only | *pending* |
 
@@ -277,7 +281,8 @@ Distance = **cm from top sensor to water** (larger cm = lower water).
 | Pause | `input_number.water_garden_pause_minutes` | Off time between halves (default 15) |
 | Phase | `input_select.water_garden_phase` | idle / first_half / pause / second_half |
 | Segment timer | `timer.water_garden_segment` | Times the current half or pause; **must restore** |
-| Start button | `input_button.water_garden_start` | Preferred start control |
+| Start toggle | `switch.water_garden_watering` | ON while sequence active (not idle); turn on/off starts/stops | package template switch |
+| Start button (legacy) | `input_button.water_garden_start` | Still toggles start/stop if kept on a dashboard | [`helper_water_garden_start_button.yaml`](yaml/helper_water_garden_start_button.yaml) |
 
 ---
 
@@ -303,7 +308,7 @@ Distance = **cm from top sensor to water** (larger cm = lower water).
 
 | Alias | id | Behaviour | YAML |
 |-------|-----|-----------|------|
-| **Water Garden Start** | `1784746590314` | Start button or pump ON while `idle` -> start script | [`automation_water_garden_start.yaml`](yaml/automation_water_garden_start.yaml) |
+| **Water Garden Start** | `1784746590314` | Legacy button: idle -> start, else stop | [`automation_water_garden_start.yaml`](yaml/automation_water_garden_start.yaml) |
 | **Water Garden - Stop** | `1784825343018` | Pump OFF only while `first_half` or `second_half` -> stop script (avoids double notify on planned half ends) | [`automation_water_garden_stop.yaml`](yaml/automation_water_garden_stop.yaml) |
 | **Water Garden - Pump is on but Water is too low** | `1784745405904` | Distance above Max Low during a watering half -> stop with reason (sensor trigger, not /5 poll) | [`automation_water_garden_pump_on_water_too_low.yaml`](yaml/automation_water_garden_pump_on_water_too_low.yaml) |
 | **Water Garden - Water butt is full** | `1784803698288` | Full / enough Telegram with **2 minute** `for` debounce | [`automation_water_garden_water_butt_full.yaml`](yaml/automation_water_garden_water_butt_full.yaml) |

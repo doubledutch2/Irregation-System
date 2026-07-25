@@ -2,6 +2,7 @@ alias: Water Garden - Stop
 description: >-
   Abort or finish-cleanup - cancel segment timer, set phase idle, ensure pump off,
   one Telegram message. Optional field "reason" for the notify text.
+  No-op if already idle.
 fields:
   reason:
     name: Reason
@@ -10,6 +11,12 @@ fields:
     selector:
       text:
 sequence:
+  - if:
+      - condition: state
+        entity_id: input_select.water_garden_phase
+        state: idle
+    then:
+      - stop: ""
   - action: timer.cancel
     target:
       entity_id: timer.water_garden_segment
