@@ -2,6 +2,11 @@
 # Deployed to /config/packages/water_garden.yaml
 # Source of truth fragments: repo yaml/ directory
 
+input_boolean:
+  water_butt_distance_fault:
+    name: Distance sensor fault
+    icon: mdi:radar
+
 input_number:
   water_garden_duration_minutes:
     name: Water Garden Duration
@@ -49,6 +54,14 @@ input_number:
     unit_of_measurement: "L"
     mode: box
     icon: mdi:cup-water
+  water_butt_distance_stale_minutes:
+    name: Distance sensor stale after
+    min: 1
+    max: 120
+    step: 1
+    unit_of_measurement: "min"
+    mode: box
+    icon: mdi:timer-alert-outline
 
 input_select:
   water_garden_phase:
@@ -193,7 +206,107 @@ template:
             data:
               reason: STOP - Start Watering toggled off
 
+  # Watchdog only while fill valve OR pump is on. Idle stable levels often do not
+  # refresh HA last_updated, which falsely looked like a dead sensor.
+  # Trip condition: unavailable/unknown for N minutes while active (not "unchanged cm").
+  - triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: state
+        entity_id:
+          - sensor.ultrasonic_waterbutt
+          - switch.outside_tap_valve
+          - switch.study_water_pump
+          - input_number.water_butt_distance_stale_minutes
+    binary_sensor:
+      - name: "Water butt distance stale"
+        unique_id: water_butt_distance_stale
+        default_entity_id: binary_sensor.water_butt_distance_stale
+        device_class: problem
+        icon: mdi:radar
+        state: >
+          {% set active = is_state('switch.outside_tap_valve', 'on')
+             or is_state('switch.study_water_pump', 'on') %}
+          {% if not active %}
+            false
+          {% else %}
+            {% set mins = states('input_number.water_butt_distance_stale_minutes') | float(15) %}
+            {% set s = states.sensor.ultrasonic_waterbutt %}
+            {% if s is none %}
+              true
+            {% elif s.state not in ['unavailable', 'unknown', 'none', ''] %}
+              false
+            {% else %}
+              {{ (as_timestamp(now()) - as_timestamp(s.last_changed)) >= (mins * 60) }}
+            {% endif %}
+          {% endif %}
+
 script:
+  water_butt_distance_fault_trip:
+    alias: Water butt distance sensor fault
+    description: >-
+      Distance sensor unavailable while fill valve or pump is on - abort watering,
+      close fill valve, disable Enable top-up, latch fault. Hourly reminders until
+      the sensor reports again.
+    mode: single
+    sequence:
+      - if:
+          - condition: state
+            entity_id: input_boolean.water_butt_distance_fault
+            state: "on"
+        then:
+          - stop: ""
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.water_butt_distance_fault
+      - action: switch.turn_off
+        target:
+          entity_id: switch.outside_tap_valve
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: idle
+        then:
+          - action: timer.cancel
+            target:
+              entity_id: timer.water_butt_topup_segment
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.water_butt_topup_phase
+            data:
+              option: idle
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: input_select.water_garden_phase
+                state: idle
+        then:
+          - action: timer.cancel
+            target:
+              entity_id: timer.water_garden_segment
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.water_garden_phase
+            data:
+              option: idle
+          - action: switch.turn_off
+            target:
+              entity_id: switch.study_water_pump
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.water_butt_topup_enabled
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            FAULT - water butt distance sensor unavailable for {{
+            states('input_number.water_butt_distance_stale_minutes') | float(15) | round(0)
+            }} min while fill valve or pump was ON (state {{
+            states('sensor.ultrasonic_waterbutt') }}). Filling and watering DISABLED.
+            Enable top-up turned OFF. Reminder every hour until the sensor recovers.
+
   water_garden_start:
     alias: Start Watering
     description: >-
@@ -215,6 +328,28 @@ script:
               message: >-
                 Water Garden start ignored - already running (phase {{
                 states('input_select.water_garden_phase') }}).
+          - stop: ""
+      - if:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: sensor.ultrasonic_waterbutt
+                state: unavailable
+              - condition: state
+                entity_id: sensor.ultrasonic_waterbutt
+                state: unknown
+              - condition: state
+                entity_id: input_boolean.water_butt_distance_fault
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.water_butt_distance_stale
+                state: "on"
+        then:
+          - action: notify.notifier_telegram_leon
+            data:
+              message: >-
+                Water Garden start blocked - distance sensor unavailable/fault
+                ({{ states('sensor.ultrasonic_waterbutt') }}). Fix the sensor first.
           - stop: ""
       - if:
           - condition: numeric_state
@@ -256,6 +391,9 @@ script:
           entity_id: input_number.water_garden_session_expected_litres
         data:
           value: "{{ states('sensor.water_butt_litres_required') | float(0) | round(0) }}"
+      # Fill-session calibration tiles reset when watering starts (display only).
+      - action: script.water_butt_fill_session_reset
+        data: {}
       - action: notify.notifier_telegram_leon
         data:
           message: >-
@@ -547,3 +685,88 @@ automation:
                   message: >-
                     HA restarted during Water Garden pause. Pump turned OFF. Pause
                     timer should still be running.
+
+  - id: water_butt_distance_stale_seed
+    alias: Water butt distance - Seed stale minutes if unset
+    description: Default Distance sensor stale after = 15 min when helper is unset.
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions: []
+    actions:
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_distance_stale_minutes') in
+              ['unknown', 'unavailable', 'none', '']
+              or states('input_number.water_butt_distance_stale_minutes') | float(0) == 0 }}
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_distance_stale_minutes
+            data:
+              value: 15
+
+  - id: water_butt_distance_stale_trip
+    alias: Water butt distance - Unavailable while active trip
+    description: >-
+      While fill valve or pump is ON, if the ultrasonic stays unavailable for the
+      helper timeout, abort watering and filling. Idle stable levels are ignored.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.water_butt_distance_stale
+        to: "on"
+    conditions: []
+    actions:
+      - action: script.water_butt_distance_fault_trip
+        data: {}
+
+  - id: water_butt_distance_stale_hourly
+    alias: Water butt distance - Hourly fault reminder
+    description: Telegram every hour while a distance-sensor fault is latched.
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        hours: "/1"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.water_butt_distance_fault
+        state: "on"
+    actions:
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            REMINDER - water butt distance sensor fault still active (state {{
+            states('sensor.ultrasonic_waterbutt') }}, timeout {{
+            states('input_number.water_butt_distance_stale_minutes') | float(15) | round(0)
+            }} min). Filling and watering remain DISABLED until the sensor recovers.
+            Re-enable top-up manually after it is healthy.
+
+  - id: water_butt_distance_stale_recovered
+    alias: Water butt distance - Recovered
+    description: Clear latched fault when the ultrasonic reports a numeric reading again.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.ultrasonic_waterbutt
+    conditions:
+      - condition: state
+        entity_id: input_boolean.water_butt_distance_fault
+        state: "on"
+      - condition: template
+        value_template: >
+          {{ states('sensor.ultrasonic_waterbutt') not in
+             ['unavailable', 'unknown', 'none', '']
+             and states('sensor.ultrasonic_waterbutt') | float(none) is not none }}
+    actions:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.water_butt_distance_fault
+      - action: notify.notifier_telegram_leon
+        data:
+          message: >-
+            Water butt distance sensor RECOVERED ({{
+            states('sensor.ultrasonic_waterbutt') }} cm). Watering is allowed again.
+            Enable top-up stays OFF until you turn it back on.

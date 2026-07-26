@@ -111,20 +111,31 @@ No Home Assistant persistent/bell notifications for Water Garden (Telegram only)
 | Tile | `input_number.water_butt_max_low_level` | Max Low | Calibration: cm when pump will run dry |
 | Tile | `input_number.water_butt_litres_per_cm` | litre/cm | Calibration: litres per 1 cm level change |
 
-**Litres required formula:** `(Red x 2 + Black x 4) x (Duration minutes / 60)`. Example: 57 red + 31 black, Duration 60 -> `(114+124) x 1 = 238 L`.
+**Litres required formula:** `(Red x 2 + Black x 4) x (Duration minutes / 60)`. Example: **68** red + **31** black, Duration 60 -> `(136+124) x 1 = 260 L`.
 
 **Actual litres used (last sequence):** at Start, HA stores the ultrasonic distance (cm) and expected litres. **Last litres used (actual)** is a live sensor: `(current_cm - start_cm) x litres_per_cm` (distance rises as the butts empty). It is not sent on Telegram - check the dashboard after the butts equalise (e.g. an hour later). It keeps updating until the next Start.
 
 **Dashboard change:** remove the old **Requirement (L)** / cm requirement tiles if still present. Add **Red drippers** and **Black drippers** tiles. Keep **Litres required for garden** as a read-only sensor. Add **Last litres used (actual)** and **Last litres required (expected)** for calibration (`yaml/dashboard_card_watering_usage.yaml`).
 
-### Section - Water butt top-up (mains)
+### Section - Water butt top-up (mains / Outside Tap Valve)
 
-Package: [`yaml/package_water_butt_topup.yaml`](yaml/package_water_butt_topup.yaml) -> `/config/packages/water_butt_topup.yaml`. Valve: `switch.outside_tap_valve`.
+**Hardware:** Sonoff **SWV** Zigbee smart water valve, named **Outside Tap Valve** in Home Assistant. It fills the linked butts from the outdoor tap (mains), under HA control - not a passive float valve.
+
+| HA entity | Role |
+|-----------|------|
+| `switch.outside_tap_valve` | Open/close the fill valve |
+| `sensor.outside_tap_valve_volume_flow_rate` | Instant flow (m3/h) - drives lifetime litres + ETA |
+| `sensor.outside_tap_valve_litres_total` | Lifetime litres through the valve (never resets) |
+| `sensor.outside_tap_valve_battery` | Battery %; low-battery Telegram every 6h below threshold |
+| `binary_sensor.outside_tap_valve_water_leak` | Leak -> safety trip |
+| `binary_sensor.outside_tap_valve_water_supply` | SWV "supply" flag - **not used for control** (stays off with hose on this install) |
+
+Package: [`yaml/package_water_butt_topup.yaml`](yaml/package_water_butt_topup.yaml) -> `/config/packages/water_butt_topup.yaml`.
 
 | Card | Entity | Name on dashboard | Role |
 |------|--------|-------------------|------|
 | Tile + toggle | `input_boolean.water_butt_topup_enabled` | Enable top-up | Master enable/disable for fill logic. OFF aborts any campaign. [`dashboard_card_topup_enabled.yaml`](yaml/dashboard_card_topup_enabled.yaml) |
-| Tile | `input_button.water_butt_topup_now` | Top-up now | Force-start a staged campaign while idle (Enable top-up must be ON). Not a valve switch — use Outside Tap Valve for that. |
+| Tile | `input_button.water_butt_topup_now` | Top-up now | Force-start a staged campaign while idle (Enable top-up must be ON). Not a valve switch - use Outside Tap Valve for that. |
 | Tile | `input_select.water_butt_topup_phase` | Top-up phase | `idle` / `burst` / `settling` / `paused` |
 | Tile | `timer.water_butt_topup_segment` | Top-up segment | Burst or gap countdown |
 | Tile | `input_number.water_butt_topup_burst_minutes` | Top-up burst (min) | Valve open time (default **30** if unset) |
@@ -135,18 +146,51 @@ Package: [`yaml/package_water_butt_topup.yaml`](yaml/package_water_butt_topup.ya
 | Tile | `input_number.water_butt_total_capacity_litres` | Butt capacity (L) | Nameplate bank capacity (default **630**). Campaign abort if valve puts more than this through. |
 | Tile | `input_number.water_butt_topup_max_bursts` | Top-up max bursts | Backup limit if flow meter stuck (default **15**). |
 | Tile | `sensor.water_butt_topup_campaign_litres` | Campaign litres added | Litres through valve since this campaign started |
+| Tile | `sensor.water_butt_fill_session_litres` | Fill session litres | Valve litres since fill session start (display only) |
+| Tile | `sensor.water_butt_fill_session_cm_gained` | Fill session cm gained | Distance drop since fill session start (display only) |
+| Tile | `sensor.water_butt_fill_session_litres_per_cm` | Fill session L/cm | `litres / cm gained` once >= 0.5 cm (display only; compare to litre/cm helper) |
+| Tile | `input_number.water_butt_topup_start_margin_percent` | Top-up start margin (%) | Extra headroom on auto-start (default **15**). Threshold = required x (1 + margin/100). |
+| Tile | `sensor.water_butt_litres_required_with_margin` | Litres required + margin | Auto-start threshold in litres |
+| Tile | `input_number.water_butt_distance_stale_minutes` | Distance stale after | Timeout (default **15**). While valve or pump is ON, unavailable this long trips a fault. |
+| Tile | `binary_sensor.water_butt_distance_stale` | Distance sensor stale | ON only while valve/pump active and ultrasonic unavailable long enough |
+| Tile | `binary_sensor.water_butt_needs_topup` | Needs top-up | ON when litres_left < required-with-margin (re-checked every minute) |
+| Tile | `input_boolean.water_butt_distance_fault` | Distance sensor fault | Latched after a trip until the ultrasonic reports again |
 | Tile + toggle | `switch.outside_tap_valve` | Outside Tap Valve | Manual override / visibility |
+| Tile | `switch.outside_tap_valve_water_shortage_auto_close` | Water shortage auto-close | Keep **OFF** on this install (SWV false shortage with hose) |
 | Tile | `sensor.outside_tap_valve_litres_total` | Tap litres total | Lifetime litres through the valve (never resets). Add after restart. |
 | Tile | `sensor.outside_tap_valve_battery` | Tap battery | Zigbee battery % |
 | Tile | `input_number.water_butt_topup_battery_low_percent` | Battery low at (%) | Telegram alert threshold (default **20**). Reminds every 6h while below. |
 | Tile | `binary_sensor.outside_tap_valve_water_leak` | Tap leak | Safety trip + disables top-up |
-| Tile | `binary_sensor.outside_tap_valve_water_supply` | Tap supply | Skip burst if off |
+| Tile | `binary_sensor.outside_tap_valve_water_supply` | Tap supply | Informational only - not used to skip bursts |
 
 Paste section: [`yaml/dashboard_section_water_butt_topup.yaml`](yaml/dashboard_section_water_butt_topup.yaml).
+New tiles only (paste one card at a time, no leading `-`): [`yaml/dashboard_cards_topup_new.yaml`](yaml/dashboard_cards_topup_new.yaml).
 
-**Behaviour:** when Enable top-up is ON and `litres_left` stays below `litres_required` for 2 min, HA opens the tap in bursts until the butts are **truly full** after a gap (distance still at/under Max High + 1 cm). Watering always wins: top-up pauses (valve closed) while a watering sequence runs, then resumes.
+**Behaviour:** when Enable top-up is ON and butts need water (see triggers below), HA opens the tap in bursts until the butts are **truly full** after a gap (distance still at/under Max High + 1 cm). Watering always wins: top-up pauses (valve closed) while a watering sequence runs, then resumes.
+
+**Fill session (calibration, display only):** at each campaign start HA stores valve litres + ultrasonic cm. Tiles show valve litres added, cm height gained, and average L/cm. Nothing automates from these. They reset when a watering sequence starts.
+
+**Distance sensor fault:** while the **Outside Tap Valve is ON** or the **pump is ON**, if `sensor.ultrasonic_waterbutt` stays unavailable for **Distance stale after** minutes (default 15), HA aborts watering/filling and turns **Enable top-up OFF**. Idle / stable levels are ignored (unchanged cm often does not refresh HA). Fault is latched (`input_boolean.water_butt_distance_fault`) until the sensor reports again (hourly Telegram while latched).
 
 **Safety budget:** each campaign may add at most **Butt capacity** litres through the valve (and at most **max bursts**). Exceeding either closes the valve, ends the campaign, and turns **Enable top-up OFF** (Telegram). Turn Enable back ON only after you have checked for leaks / sensor faults.
+
+**HA restart:** Outside Tap Valve is always forced OFF on start (never left open). If phase was `burst`, HA starts a settling gap and continues the campaign. Settling/paused resume from restored phase + timer (`restore: true`).
+
+**SWV notes:** LED does not stay lit while open (battery saving - brief flash only). Keep **Water shortage auto-close** OFF. Do not use `binary_sensor.outside_tap_valve_water_supply` for control on this install.
+
+### How top-up is triggered (logic)
+
+1. **Master gate:** `input_boolean.water_butt_topup_enabled` must be ON. Turning it OFF aborts any campaign.
+2. **Auto start:** when `binary_sensor.water_butt_needs_topup` is ON (`litres_left` < required-with-margin), and the distance sensor is healthy:
+   - Level has needed water for **2 minutes** -> start (phase must be `idle`)
+   - **Enable top-up** turned ON -> start **immediately** if already needing water (also breaks out of a settle gap)
+   - Every **15 minutes** -> safety-net re-check while still needing water and idle
+   - Threshold = `litres_required x (1 + start_margin_% / 100)` (default margin **15%**).
+   - The needs-top-up binary is **re-evaluated every minute** (and on litre/threshold changes), so a stable low level still counts.
+3. **Manual start:** **Top-up now** (`input_button.water_butt_topup_now`) while idle -> same start script (Enable must still be ON).
+4. **Campaign loop:** open valve for **burst** minutes (or early-close / skip-open if already at Max High minus fill margin) -> close for **gap** minutes (equalise / pace water company) -> if still not truly full (distance > Max High + 1 cm), open another burst. Ends when truly full after a settle, or on safety trip / disable.
+5. **Watering priority:** if watering is active, campaign goes `paused` (valve closed) and resumes when watering returns to `idle`.
+6. **Also starts after watering** if Enable is ON, phase idle, and litres still below the margin threshold (checked once when watering becomes idle - no 2 min wait).
 
 ### Adding these in the UI
 
@@ -237,6 +281,7 @@ Update the Garden / `water-butts` view from [`dashboard_garden_water_butts.yaml`
 | Rebalance pause | `input_number.water_garden_pause_minutes` (default 15) |
 | Stop / abort | Pump OFF during a half, low-water, or stop script |
 | Skip when butts low | Block start if distance above Max Low; abort mid-run on same |
+| Mains top-up | **Sonoff SWV** Outside Tap Valve (`switch.outside_tap_valve`) - staged fill via [`package_water_butt_topup.yaml`](yaml/package_water_butt_topup.yaml) |
 | Skip after rain | Shown on dashboard only - not automated yet |
 | Alerts | Telegram on start, each half done, abort; full/enough with debounce |
 
@@ -248,7 +293,8 @@ Update the Garden / `water-butts` view from [`dashboard_garden_water_butts.yaml`
 |------|----------------|------|
 | Zigbee plug (pump + solenoid) | `switch.study_water_pump` | *device config pending* |
 | Water-butt distance | `sensor.ultrasonic_waterbutt` - **cm** (see ESPHome below) | [`esphome_esp_home_waterbutt.yaml`](yaml/esphome_esp_home_waterbutt.yaml) |
-| Start / stop | `switch.water_garden_watering`, `script.water_garden_start`, `script.water_garden_stop` | Toggle preferred; scripts underneath | [`dashboard_card_main_start_watering.yaml`](yaml/dashboard_card_main_start_watering.yaml) |
+| Outside Tap Valve (mains fill) | `switch.outside_tap_valve` (Sonoff SWV) + flow / battery / leak | [`package_water_butt_topup.yaml`](yaml/package_water_butt_topup.yaml) |
+| Start / stop | `switch.water_garden_watering`, `script.water_garden_start`, `script.water_garden_stop` (toggle preferred) | [`dashboard_card_main_start_watering.yaml`](yaml/dashboard_card_main_start_watering.yaml) |
 | Telegram | `notify.notifier_telegram_leon` | *pending* |
 | Rain today | `sensor.rain_minutes_today` - display only | *pending* |
 
@@ -289,8 +335,8 @@ Distance = **cm from top sensor to water** (larger cm = lower water).
 | Max High Level | `input_number.water_butt_max_high_level` | cm when full |
 | Max Low Level | `input_number.water_butt_max_low_level` | cm when pump will run dry |
 | Requirement (litres) | `sensor.water_butt_litres_required` | Calculated from red/black counts x Duration |
-| Red drippers (2 L/h) | `input_number.water_garden_dripper_red_count` | Fitted red count (default 57) |
-| Black drippers (4 L/h) | `input_number.water_garden_dripper_black_count` | Fitted black count (default 31) |
+| Red drippers (2 L/h) | `input_number.water_garden_dripper_red_count` | Fitted red count (current **68**) |
+| Black drippers (4 L/h) | `input_number.water_garden_dripper_black_count` | Fitted black count (current **31**) |
 | Minimum Refill Level (legacy cm) | `input_number.water_butt_minimum_refill_level` | Old cm setpoint - unused |
 
 ### Template sensors
@@ -373,7 +419,7 @@ Full view: [`dashboard_garden_water_butts.yaml`](yaml/dashboard_garden_water_but
 6. **Pump entity name** - left as `switch.study_water_pump`.
 7. **OTA password** - consider `!secret` in ESPHome; functionality unchanged.
 
-**Calibration tip:** after each half Telegram, compare litres left drop to expected half-run use (about half of ~240 L once Stage 2 is ~80 drippers - or ~60 L per half at Stage 1 ~120 L/h for 30 min). Adjust `litres_per_cm` and level helpers until the numbers make sense.
+**Calibration tip:** after each half Telegram, compare litres left drop to expected half-run use (about half of ~260 L at 68 red + 31 black for Duration 60 - ~130 L per half). Adjust `litres_per_cm` and level helpers until the numbers make sense.
 
 ---
 
@@ -390,6 +436,13 @@ Full view: [`dashboard_garden_water_butts.yaml`](yaml/dashboard_garden_water_but
 | 2026-07-25 | Pump toggle no longer starts sequence; Duration/Pause min 1; Requirement in litres | `package_water_garden.yaml`, `configuration.yaml` templates moved into package |
 | 2026-07-25 | Litres required from red/black dripper counts x Duration | `package_water_garden.yaml` |
 | 2026-07-26 | Staged mains top-up via Outside Tap Valve; auto when not enough; pause for watering | `package_water_butt_topup.yaml` |
+| 2026-07-26 | Fitted drippers 68 red + 31 black (~260 L/h); document Sonoff SWV fill valve | `Irrigation Plan.md`, `Home Assistant.md` |
+| 2026-07-26 | Distance sensor stale watchdog (disable fill+water, hourly Telegram); fill-session L/cm tiles | `package_water_garden.yaml`, `package_water_butt_topup.yaml` |
+| 2026-07-26 | Auto-start margin % (default 15); threshold sensor; isolated new dashboard cards | `package_water_butt_topup.yaml`, `dashboard_cards_topup_new.yaml` |
+| 2026-07-26 | Stop skipping bursts on SWV water_supply (false off with hose) | `package_water_butt_topup.yaml` |
+| 2026-07-26 | Distance watchdog only while valve/pump on; trip on unavailable (not unchanged cm) | `package_water_garden.yaml` |
+| 2026-07-26 | Enable ON starts immediately if needs water; settle-gap breakout; skip open if already at fill margin | `package_water_butt_topup.yaml` |
+| 2026-07-26 | Docs: SWV LED / water_supply / shortage auto-close; restart recover; paste-friendly dashboard cards | `Home Assistant.md`, `dashboard_cards_topup_new.yaml` |
 
 ---
 

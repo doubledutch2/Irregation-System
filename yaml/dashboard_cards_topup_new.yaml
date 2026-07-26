@@ -1,0 +1,62 @@
+# Paste ONE card at a time into a Tile card's YAML editor (no leading "-").
+# Or: Add card -> Tile -> show code editor -> paste one block.
+
+# --- Fill session calibration (display only) ---
+
+type: tile
+entity: sensor.water_butt_fill_session_litres
+name: Fill session litres (valve)
+
+# --- next card ---
+
+type: tile
+entity: sensor.water_butt_fill_session_cm_gained
+name: Fill session cm gained
+
+# --- next card ---
+
+type: tile
+entity: sensor.water_butt_fill_session_litres_per_cm
+name: Fill session L/cm
+
+# --- Distance sensor watchdog ---
+
+type: tile
+entity: input_number.water_butt_distance_stale_minutes
+name: Distance stale after (min)
+
+# --- next card ---
+
+type: tile
+entity: binary_sensor.water_butt_distance_stale
+name: Distance sensor stale
+
+# --- Auto-start margin ---
+
+type: tile
+entity: input_number.water_butt_topup_start_margin_percent
+name: Top-up start margin (%)
+
+# --- next card ---
+
+type: tile
+entity: sensor.water_butt_litres_required_with_margin
+name: Litres required + margin
+
+# --- next card ---
+
+type: tile
+entity: binary_sensor.water_butt_needs_topup
+name: Needs top-up
+
+# --- next card ---
+
+type: tile
+entity: input_boolean.water_butt_distance_fault
+name: Distance sensor fault
+
+# --- next card ---
+
+type: tile
+entity: switch.outside_tap_valve_water_shortage_auto_close
+name: Water shortage auto-close (keep OFF)

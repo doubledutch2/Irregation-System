@@ -82,6 +82,30 @@ input_number:
     unit_of_measurement: "%"
     mode: box
     icon: mdi:battery-alert
+  water_butt_topup_start_margin_percent:
+    name: Top-up start margin
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+    icon: mdi:percent-outline
+  water_butt_fill_session_start_litres:
+    name: Fill session start litres
+    min: 0
+    max: 10000000
+    step: 0.1
+    unit_of_measurement: "L"
+    mode: box
+    icon: mdi:ray-start
+  water_butt_fill_session_start_cm:
+    name: Fill session start distance
+    min: 0
+    max: 500
+    step: 0.1
+    unit_of_measurement: "cm"
+    mode: box
+    icon: mdi:ray-start-arrow
 
 input_select:
   water_butt_topup_phase:
@@ -141,6 +165,22 @@ template:
             unavailable
           {% else %}
             {{ [(total - start), 0] | max | round(1) }}
+          {% endif %}
+
+      - name: "Litres required with margin"
+        unique_id: water_butt_litres_required_with_margin
+        default_entity_id: sensor.water_butt_litres_required_with_margin
+        unit_of_measurement: "L"
+        device_class: water
+        state_class: measurement
+        icon: mdi:water-percent
+        state: >
+          {% set need = states('sensor.water_butt_litres_required') | float(none) %}
+          {% set margin = states('input_number.water_butt_topup_start_margin_percent') | float(15) %}
+          {% if need is none %}
+            unavailable
+          {% else %}
+            {{ (need * (1 + margin / 100)) | round(0) }}
           {% endif %}
 
       - name: "Litres to full"
@@ -223,7 +263,109 @@ template:
               states('input_number.water_butt_topup_gap_minutes') }} min)
             {% endif %}
 
+      # Display-only calibration during / after a fill. Reset when watering starts.
+      - name: "Fill session litres"
+        unique_id: water_butt_fill_session_litres
+        default_entity_id: sensor.water_butt_fill_session_litres
+        unit_of_measurement: "L"
+        device_class: water
+        state_class: measurement
+        icon: mdi:water-plus
+        state: >
+          {% set total = states('sensor.outside_tap_valve_litres_total') | float(none) %}
+          {% set start = states('input_number.water_butt_fill_session_start_litres') | float(none) %}
+          {% if none in [total, start] %}
+            unavailable
+          {% else %}
+            {{ [(total - start), 0] | max | round(1) }}
+          {% endif %}
+
+      - name: "Fill session cm gained"
+        unique_id: water_butt_fill_session_cm_gained
+        default_entity_id: sensor.water_butt_fill_session_cm_gained
+        unit_of_measurement: "cm"
+        state_class: measurement
+        icon: mdi:arrow-expand-vertical
+        state: >
+          {% set start = states('input_number.water_butt_fill_session_start_cm') | float(none) %}
+          {% set nowd = states('sensor.ultrasonic_waterbutt') | float(none) %}
+          {% if none in [start, nowd] %}
+            unavailable
+          {% else %}
+            {{ [(start - nowd), 0] | max | round(1) }}
+          {% endif %}
+
+      - name: "Fill session L/cm"
+        unique_id: water_butt_fill_session_litres_per_cm
+        default_entity_id: sensor.water_butt_fill_session_litres_per_cm
+        unit_of_measurement: "L/cm"
+        state_class: measurement
+        icon: mdi:chart-bell-curve-cumulative
+        state: >
+          {% set litres = states('sensor.water_butt_fill_session_litres') | float(none) %}
+          {% set cm = states('sensor.water_butt_fill_session_cm_gained') | float(none) %}
+          {% if none in [litres, cm] or cm < 0.5 %}
+            unavailable
+          {% else %}
+            {{ (litres / cm) | round(2) }}
+          {% endif %}
+
+  # Re-evaluate every minute so a stable low level still counts as "needs top-up"
+  # even when litres_left does not change (numeric_state alone would never fire).
+  - triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: state
+        entity_id:
+          - sensor.water_butt_litres_left
+          - sensor.water_butt_litres_required_with_margin
+          - sensor.water_butt_litres_required
+          - input_number.water_butt_topup_start_margin_percent
+    binary_sensor:
+      - name: "Water butt needs top-up"
+        unique_id: water_butt_needs_topup
+        default_entity_id: binary_sensor.water_butt_needs_topup
+        icon: mdi:water-alert
+        state: >
+          {% set left = states('sensor.water_butt_litres_left') | float(none) %}
+          {% set need = states('sensor.water_butt_litres_required_with_margin') | float(none) %}
+          {{ left is not none and need is not none and left < need }}
+
 script:
+  water_butt_fill_session_reset:
+    alias: Water butt fill session - Reset
+    description: >-
+      Zero fill-session calibration tiles (valve litres / cm gained / L per cm).
+      Called when watering starts. Display only - not used by control logic.
+    mode: single
+    sequence:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_fill_session_start_litres
+        data:
+          value: "{{ states('sensor.outside_tap_valve_litres_total') | float(0) | round(1) }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_fill_session_start_cm
+        data:
+          value: "{{ states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }}"
+
+  water_butt_fill_session_mark_start:
+    alias: Water butt fill session - Mark start
+    description: Capture valve litres + distance baselines at campaign start (display only).
+    mode: single
+    sequence:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_fill_session_start_litres
+        data:
+          value: "{{ states('sensor.outside_tap_valve_litres_total') | float(0) | round(1) }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.water_butt_fill_session_start_cm
+        data:
+          value: "{{ states('sensor.ultrasonic_waterbutt') | float(0) | round(1) }}"
+
   water_butt_topup_safety_trip:
     alias: Water butt top-up - Safety trip
     description: >-
@@ -323,6 +465,22 @@ script:
               reason: STOP - auto top-up disabled
           - stop: ""
       - if:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: sensor.ultrasonic_waterbutt
+                state: unavailable
+              - condition: state
+                entity_id: sensor.ultrasonic_waterbutt
+                state: unknown
+              - condition: state
+                entity_id: binary_sensor.water_butt_distance_stale
+                state: "on"
+        then:
+          - action: script.water_butt_distance_fault_trip
+            data: {}
+          - stop: ""
+      - if:
           - condition: not
             conditions:
               - condition: state
@@ -330,6 +488,35 @@ script:
                 state: idle
         then:
           - action: script.water_butt_topup_pause_for_watering
+            data: {}
+          - stop: ""
+      # Already at/near full - do not flash the valve open then closed.
+      - if:
+          - condition: template
+            value_template: >
+              {% set d = states('sensor.ultrasonic_waterbutt') | float(999) %}
+              {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
+              {{ d <= (high + 1) }}
+        then:
+          - action: script.water_butt_topup_complete
+            data: {}
+          - stop: ""
+      - if:
+          - condition: template
+            value_template: >
+              {% set d = states('sensor.ultrasonic_waterbutt') | float(999) %}
+              {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
+              {% set margin = states('input_number.water_butt_topup_fill_margin_cm') | float(2) %}
+              {{ d <= (high - margin) }}
+        then:
+          - action: notify.notifier_telegram_leon
+            data:
+              message: >-
+                Water butt top-up burst skipped - already at fill margin
+                ({{ states('sensor.ultrasonic_waterbutt') }} cm <= Max High {{
+                states('input_number.water_butt_max_high_level') }} - margin {{
+                states('input_number.water_butt_topup_fill_margin_cm') }}). Settling.
+          - action: script.water_butt_topup_close_to_settle
             data: {}
           - stop: ""
       - if:
@@ -375,29 +562,9 @@ script:
           entity_id: input_number.water_butt_topup_campaign_burst_count
         data:
           value: "{{ (states('input_number.water_butt_topup_campaign_burst_count') | float(0) + 1) | int }}"
-      - if:
-          - condition: state
-            entity_id: binary_sensor.outside_tap_valve_water_supply
-            state: "off"
-        then:
-          - action: input_select.select_option
-            target:
-              entity_id: input_select.water_butt_topup_phase
-            data:
-              option: settling
-          - action: timer.start
-            target:
-              entity_id: timer.water_butt_topup_segment
-            data:
-              duration: >
-                {% set secs = (states('input_number.water_butt_topup_gap_minutes') | float(210) * 60) | int %}
-                {{ '%02d:%02d:%02d' % (secs // 3600, (secs % 3600) // 60, secs % 60) }}
-          - action: notify.notifier_telegram_leon
-            data:
-              message: >-
-                Water butt top-up burst skipped - no water supply. Waiting gap {{
-                states('input_number.water_butt_topup_gap_minutes') }} min.
-          - stop: ""
+      # Note: binary_sensor.outside_tap_valve_water_supply is NOT used - on this SWV it
+      # stays off with a normal hose attached (false water-shortage). Capacity / max
+      # bursts / leak / valve watchdog remain the safety net.
       - action: input_select.select_option
         target:
           entity_id: input_select.water_butt_topup_phase
@@ -537,6 +704,25 @@ script:
               message: Water butt top-up start ignored - Auto top-up is OFF.
           - stop: ""
       - if:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: sensor.ultrasonic_waterbutt
+                state: unavailable
+              - condition: state
+                entity_id: sensor.ultrasonic_waterbutt
+                state: unknown
+              - condition: state
+                entity_id: binary_sensor.water_butt_distance_stale
+                state: "on"
+        then:
+          - action: notify.notifier_telegram_leon
+            data:
+              message: >-
+                Water butt top-up start blocked - distance sensor unavailable/stale
+                ({{ states('sensor.ultrasonic_waterbutt') }}).
+          - stop: ""
+      - if:
           - condition: not
             conditions:
               - condition: state
@@ -561,6 +747,8 @@ script:
               entity_id: input_number.water_butt_topup_campaign_burst_count
             data:
               value: 0
+          - action: script.water_butt_fill_session_mark_start
+            data: {}
           - action: input_select.select_option
             target:
               entity_id: input_select.water_butt_topup_phase
@@ -593,6 +781,8 @@ script:
           entity_id: input_number.water_butt_topup_campaign_burst_count
         data:
           value: 0
+      - action: script.water_butt_fill_session_mark_start
+        data: {}
       - action: notify.notifier_telegram_leon
         data:
           message: >-
@@ -717,6 +907,18 @@ automation:
               entity_id: input_number.water_butt_topup_battery_low_percent
             data:
               value: 20
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('input_number.water_butt_topup_start_margin_percent') in
+              ['unknown', 'unavailable', 'none', '']
+              or states('input_number.water_butt_topup_start_margin_percent') | float(-1) == 0 }}
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.water_butt_topup_start_margin_percent
+            data:
+              value: 15
 
   - id: water_butt_topup_capacity_budget
     alias: Water butt top-up - Capacity budget exceeded
@@ -751,24 +953,76 @@ automation:
   - id: water_butt_topup_auto_start
     alias: Water butt top-up - Auto start when not enough
     description: >-
-      When usable litres drop below litres required for the next watering, start
-      a staged top-up campaign (if enabled and idle).
+      Start a staged top-up when butts need water. Triggers: needs-top-up for
+      2 minutes; Enable top-up turned ON (immediate if already needing water);
+      every 15 minutes as a safety net. Not limited to the 15-minute tick.
     mode: single
     triggers:
-      - trigger: numeric_state
-        entity_id: sensor.water_butt_litres_left
-        below: sensor.water_butt_litres_required
+      - trigger: state
+        id: needs_topup
+        entity_id: binary_sensor.water_butt_needs_topup
+        to: "on"
         for: "00:02:00"
+      - trigger: state
+        id: enable_on
+        entity_id: input_boolean.water_butt_topup_enabled
+        to: "on"
+      - trigger: time_pattern
+        id: periodic
+        minutes: "/15"
     conditions:
       - condition: state
         entity_id: input_boolean.water_butt_topup_enabled
         state: "on"
       - condition: state
-        entity_id: input_select.water_butt_topup_phase
-        state: idle
+        entity_id: binary_sensor.water_butt_needs_topup
+        state: "on"
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.water_butt_distance_stale
+            state: "on"
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.ultrasonic_waterbutt
+            state: unavailable
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.ultrasonic_waterbutt
+            state: unknown
+      # Debounce only for level-drop / periodic paths - not when user turns Enable ON.
+      - condition: or
+        conditions:
+          - condition: trigger
+            id: enable_on
+          - condition: state
+            entity_id: binary_sensor.water_butt_needs_topup
+            state: "on"
+            for: "00:02:00"
     actions:
-      - action: script.water_butt_topup_start
-        data: {}
+      - choose:
+          # Enable ON while stuck in a settle gap - open the next burst now.
+          - conditions:
+              - condition: trigger
+                id: enable_on
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: settling
+            sequence:
+              - action: timer.cancel
+                target:
+                  entity_id: timer.water_butt_topup_segment
+              - action: script.water_butt_topup_open_burst
+                data: {}
+          - conditions:
+              - condition: state
+                entity_id: input_select.water_butt_topup_phase
+                state: idle
+            sequence:
+              - action: script.water_butt_topup_start
+                data: {}
 
   - id: water_butt_topup_remember_flow
     alias: Water butt top-up - Remember last flow rate
@@ -863,9 +1117,9 @@ automation:
               - condition: state
                 entity_id: input_select.water_butt_topup_phase
                 state: idle
-              - condition: numeric_state
-                entity_id: sensor.water_butt_litres_left
-                below: sensor.water_butt_litres_required
+              - condition: state
+                entity_id: binary_sensor.water_butt_needs_topup
+                state: "on"
             sequence:
               - action: script.water_butt_topup_start
                 data: {}
@@ -933,7 +1187,8 @@ automation:
     alias: Water butt top-up - Early close at fill margin
     description: >-
       During burst, close when sensor butt approaches Max High minus margin so
-      siblings can catch up on the next cycle.
+      siblings can catch up on the next cycle. Also fires when phase becomes burst
+      if already at/under the margin (avoids relying only on a template edge).
     mode: single
     triggers:
       - trigger: template
@@ -942,10 +1197,19 @@ automation:
           {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
           {% set margin = states('input_number.water_butt_topup_fill_margin_cm') | float(2) %}
           {{ d <= (high - margin) }}
+      - trigger: state
+        entity_id: input_select.water_butt_topup_phase
+        to: burst
     conditions:
       - condition: state
         entity_id: input_select.water_butt_topup_phase
         state: burst
+      - condition: template
+        value_template: >
+          {% set d = states('sensor.ultrasonic_waterbutt') | float(999) %}
+          {% set high = states('input_number.water_butt_max_high_level') | float(0) %}
+          {% set margin = states('input_number.water_butt_topup_fill_margin_cm') | float(2) %}
+          {{ d <= (high - margin) }}
     actions:
       - action: timer.cancel
         target:

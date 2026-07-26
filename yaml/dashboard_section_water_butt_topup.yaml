@@ -41,6 +41,27 @@ cards:
     entity: sensor.water_butt_topup_campaign_litres
     name: Campaign litres added
   - type: tile
+    entity: sensor.water_butt_fill_session_litres
+    name: Fill session litres (valve)
+  - type: tile
+    entity: sensor.water_butt_fill_session_cm_gained
+    name: Fill session cm gained
+  - type: tile
+    entity: sensor.water_butt_fill_session_litres_per_cm
+    name: Fill session L/cm
+  - type: tile
+    entity: input_number.water_butt_topup_start_margin_percent
+    name: Top-up start margin (%)
+  - type: tile
+    entity: sensor.water_butt_litres_required_with_margin
+    name: Litres required + margin
+  - type: tile
+    entity: input_number.water_butt_distance_stale_minutes
+    name: Distance stale after (min)
+  - type: tile
+    entity: binary_sensor.water_butt_distance_stale
+    name: Distance sensor stale
+  - type: tile
     entity: switch.outside_tap_valve
     name: Outside Tap Valve
     features:

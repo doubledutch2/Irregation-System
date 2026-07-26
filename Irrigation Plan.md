@@ -65,22 +65,22 @@ Counted **drawn plant icons** on the plan (not name labels). Excluded lavender b
 | | **2 L/h (red)** | **4 L/h (black)** | Total |
 |--|----------------:|------------------:|------:|
 | **Bought** | **80** | **60** | 140 |
-| **Fitted (current)** | **57** | **31** | 88 |
-| **Left in stock** | **23** | **29** | 52 |
+| **Fitted (current)** | **68** | **31** | 99 |
+| **Left in stock** | **12** | **29** | 41 |
 
-Fitted flow: 57x2 + 31x4 = **~238 L/h** (matches the ~240 L/h design point). More can still be added from stock if needed.
+Fitted flow: 68x2 + 31x4 = **~260 L/h**. More can still be added from stock if needed.
 
 | Build | Emitters | Flow |
 |-------|----------|------|
 | Stage 1 (early) | 20x 2 L/h + 20x 4 L/h | ~120 L/h |
-| **Current install** | **57x 2 L/h + 31x 4 L/h** | **~238 L/h** |
-| Stock remaining | 23x 2 L/h + 29x 4 L/h | (available to fit later) |
+| **Current install** | **68x 2 L/h + 31x 4 L/h** | **~260 L/h** |
+| Stock remaining | 12x 2 L/h + 29x 4 L/h | (available to fit later) |
 
-| Run time @ ~240 L/h | Water used | vs ~800 L store |
+| Run time @ ~260 L/h | Water used | vs ~800 L store |
 |---------------------|------------|-----------------|
-| **60 min** (chosen) | ~**240 L** | ~**3** runs |
-| **75 min** | ~**300 L** | ~**2-3** runs |
-| **90 min** | ~**360 L** | ~**2** runs |
+| **60 min** (chosen) | ~**260 L** | ~**3** runs |
+| **75 min** | ~**325 L** | ~**2-3** runs |
+| **90 min** | ~**390 L** | ~**2** runs |
 
 **Emitter rule of thumb:** **2 L/h** on smaller shrubs/pots / ground-cover points / **4 L/h** on larger shrubs/trees.  
 Plants are **<=1 m from the fence**. With ~80 drops, budget **~100 m of 4 mm** if Stage 1's 50 m runs short.  
@@ -379,7 +379,7 @@ Optional: keep the owned **13 mm flow-control valve** as a manual isolate for ma
 
 ## 5e. Commissioning - prove the hub before finishing drippers
 
-**Install status (Jul 2026):** spine + Gardena working. Drippers fitted: **57x 2 L/h + 31x 4 L/h** (~238 L/h). Stock bought: **80x 2 L/h + 60x 4 L/h** (count leftovers to know what was used). Cup-test: open 4 mm pours; fitted dripper is a **slow** drip (~2 L/h red ~ 30-40 ml/min). Re-cup-test far west after any further adds.
+**Install status (Jul 2026):** spine + Gardena working. Drippers fitted: **68x 2 L/h + 31x 4 L/h** (~260 L/h). Stock bought: **80x 2 L/h + 60x 4 L/h** (count leftovers to know what was used). Cup-test: open 4 mm pours; fitted dripper is a **slow** drip (~2 L/h red ~ 30-40 ml/min). Re-cup-test far west after any further adds.
 
 ### Test order
 
@@ -917,7 +917,7 @@ NEVER: twice in one day / empty butts dry / pump off with solenoid stuck open
 2. Fill pump body once -> prove prime; leave switch ON for Zigbee/Presscontrol use  
 3. Hub: **G** + Hozelock snap -> KATSU -> Gardena -> **NC solenoid** -> 16 mm to east fence (section 5d (Siphon / NC solenoid), section 5e (Commissioning))  
 4. Mount **AJ-SR04M** in butt lid; confirm distance readings in Home Assistant (section 5c (Water-butt level))  
-5. Optional mains float-valve top-up  
+5. **Sonoff SWV** Outside Tap Valve for staged mains top-up (Home Assistant - see [`Home Assistant.md`](Home%20Assistant.md))  
 6. Fence-mount 16 mm **U-spine**: east fence -> north fence -> west fence (~0.6-1.0 m height) - **done**  
 7. Punch 4 mm take-offs; run 4 mm to each plant; fit PC drippers **correct way round** on stakes  
 8. Cup-test near + far west; prove plug **OFF** stops all flow (solenoid)  
@@ -937,6 +937,7 @@ Amazon order **placed** (~**GBP161** items + ~GBP2 postage). Delivery windows **
 | **13 mm flow-control valve** | Optional manual isolate (automation uses solenoid) |
 | **Water-butt link kit** | Link butts at **bottom** |
 | **AJ-SR04M** + ESP8266 | Water-butt level -> HA (section 5c (Water-butt level)) |
+| **Sonoff SWV** Outside Tap Valve | Zigbee mains fill into butts; HA staged top-up (`switch.outside_tap_valve`) |
 | **UpXNBor Zigbee plug** | Times pump + solenoid (10 A continuous OK for 600 W pump) |
 | **Outdoor IP65/55 boxes** + Wagos / glands / flex / spades / heatshrink | Hub electrics (section 5g (Outdoor electrical enclosures)) |
 | **Brass 1/2" BSP female tap connectors** x2 | Solenoid water ports |
@@ -963,14 +964,14 @@ Amazon order **placed** (~**GBP161** items + ~GBP2 postage). Delivery windows **
 |------|-------|
 | **NC 230 V brass solenoid 1/2"** | Siphon stop - [B09Y45K21L](https://www.amazon.co.uk/dp/B09Y45K21L); wire with Zigbee (section 5d (Siphon / NC solenoid)). **1/2" female brass connectors** owned |
 | **IP65/55 outdoor boxes** | Split + sensor + solenoid coil - owned (section 5g (Outdoor electrical enclosures)); assign as documented |
-| **CETA PC drippers (stock)** | Bought **80x 2 L/h + 60x 4 L/h**; fitted 57+31; remainder on shelf for extras / spares (section 3) |
+| **CETA PC drippers (stock)** | Bought **80x 2 L/h + 60x 4 L/h**; fitted 68+31; remainder on shelf for extras / spares (section 3) |
 | Extra **4 mm micro tube** | If 50 m runs short for ~80 drops - get **100 m** total |
 | **4 mm in-line shut-off valves** | Only on outlets you may isolate later (section 5h (Per-dripper shut-offs)) |
 | **1" BSP female -> hose barb** x2 | KATSU bridges if still needed |
 | **32 mm corrugated pond hose 10 m** | Gutter diverter -> butt - [eBay](https://www.ebay.co.uk/itm/164344849802) |
 | **Butt blanking** | M12 bolt + rubber washers for ~20 mm holes |
 | Optional: **+2 or +4 x 200 L butts** | Drought buffer (section 5f (Water butts / catchment)) |
-| Optional: mains float valve | Stage later |
+| Optional: mains float valve | Superseded by **Sonoff SWV** Outside Tap Valve + HA staged top-up |
 
 Historical planning tables (A-E carts, Water Irrigation bulk quotes) kept below for reference - **do not re-order** items already listed above.
 
@@ -1237,16 +1238,17 @@ See **section 11 (Shopping) ordered table** above. Key ASINs for re-orders/spare
 | Priming | Fill pump body **once**; keep NRV + airtight joints so timer can power on/off without re-priming |
 | Schedule | **60 min** morning via Zigbee; 75-90 min in heatwave (section 9 (Watering schedule)) |
 | Siphon when pump off | **NC 230 V brass solenoid** after Gardena, powered with pump (section 5d (Siphon / NC solenoid)) - not a manual daily valve |
-| Full garden pass | **~80 drippers** -> ~**240 L/h**; **60 min** ~ **240 L** - fits **~800 L** store (~3 runs); expand butts section 5f (Water butts / catchment) |
+| Full garden pass | **68 red + 31 black** -> ~**260 L/h**; **60 min** ~ **260 L** - fits **~800 L** store (~3 runs); expand butts section 5f (Water butts / catchment) |
 | Lawn / lavender | Off the system |
 | Install style | **Fence-mounted spine** (~0.6-1.0 m) with **cable ties + U-nails**; **4 mm drop to every plant** |
 | Long spine (~70 m) | **2-3 lengths** joined with **16 mm barbed straight connectors** at fence posts |
 | Hub hose connection | **Standard small Hozelock snap** on **G** - not high-flow **H**; KATSU bridged with 1" BSP hose tails |
 | Water-butt level | **AJ-SR04M** + ESPHome -> HA; skip runs when low (section 5c (Water-butt level)) |
+| Mains top-up | **Sonoff SWV** Outside Tap Valve (`switch.outside_tap_valve`) - staged HA fill when butts cannot cover next watering ([`Home Assistant.md`](Home%20Assistant.md)) |
 | Gutter fill line | **32 mm** flex pond hose (10 m) diverter -> butt - not 16 mm LDPE |
 | Blanking old butt holes | **M12 bolt + rubber washers** sandwich for ~20 mm holes |
 | Butt capacity | **4x200 L ~ 800 L** now; optional **+4 -> ~1600 L** for drought buffer (section 5f (Water butts / catchment)) |
-| Emitters (install) | **57x 2 L/h + 31x 4 L/h** fitted (~238 L/h); stock bought **80x 2 + 60x 4** |
+| Emitters (install) | **68x 2 L/h + 31x 4 L/h** fitted (~260 L/h); stock bought **80x 2 + 60x 4** |
 | Roof catchment | **Two SE downpipes** -> butts; ~60-90 m2 plan area - fills store after useful rain (section 5f (Water butts / catchment)) |
 | Outdoor electrics | Zigbee splits in IP65 box to Katsu + solenoid; separate IP65 for 12 V sensor; small box for solenoid spades only (section 5g (Outdoor electrical enclosures)) |
 | Per-plant shut-off | Optional **4 mm barbed valves** on selected drops (section 5h (Per-dripper shut-offs)) |
@@ -1262,9 +1264,10 @@ See **section 11 (Shopping) ordered table** above. Key ASINs for re-orders/spare
 - Hub: G -> KATSU -> Gardena -> **NC solenoid** - prove no leaks; plug OFF stops all flow  
 - Outdoor boxes wired (section 5g (Outdoor electrical enclosures)); solenoid spades sealed  
 - Calibrate AJ-SR04M empty/full distances in ESPHome  
-- Dripper inventory: bought 80x2 + 60x4; fitted 57+31; cup-test **far west** after any further adds
+- Dripper inventory: bought 80x2 + 60x4; fitted 68+31 (~260 L/h); cup-test **far west** after any further adds
 - Ground cover: spaced drippers + optional 4 mm valves (section 5h (Per-dripper shut-offs))  
-- Thames Water ban / float-valve / extra butts (section 5f (Water butts / catchment))  
+- Mains fill: **Sonoff SWV** Outside Tap Valve + HA staged top-up (not a passive float valve)
+- Thames Water ban / extra butts (section 5f (Water butts / catchment))  
 
 ---
 
