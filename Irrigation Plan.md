@@ -1244,7 +1244,7 @@ See **section 11 (Shopping) ordered table** above. Key ASINs for re-orders/spare
 | Long spine (~70 m) | **2-3 lengths** joined with **16 mm barbed straight connectors** at fence posts |
 | Hub hose connection | **Standard small Hozelock snap** on **G** - not high-flow **H**; KATSU bridged with 1" BSP hose tails |
 | Water-butt level | **AJ-SR04M** + ESPHome -> HA; skip runs when low (section 5c (Water-butt level)) |
-| Mains top-up | **Sonoff SWV** Outside Tap Valve (`switch.outside_tap_valve`) - staged HA fill when butts cannot cover next watering ([`Home Assistant.md`](Home%20Assistant.md)) |
+| Mains top-up | **Sonoff SWV** Outside Tap Valve - staged HA fill when litres_left < required x (1 + **15%** start margin); burst/gap; watering pauses fill ([`Home Assistant.md`](Home%20Assistant.md)) |
 | Gutter fill line | **32 mm** flex pond hose (10 m) diverter -> butt - not 16 mm LDPE |
 | Blanking old butt holes | **M12 bolt + rubber washers** sandwich for ~20 mm holes |
 | Butt capacity | **4x200 L ~ 800 L** now; optional **+4 -> ~1600 L** for drought buffer (section 5f (Water butts / catchment)) |

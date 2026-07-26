@@ -1,8 +1,9 @@
 - id: '1784803698288'
   alias: Water Garden - Water butt is full
   description: >-
-    REPLACE existing automation. Notify when full or enough for tomorrow, with 2 min
-    debounce so splash / sensor noise does not spam Telegram.
+    REPLACE existing automation. Notify when full or enough for next watering
+    (above litres_required_with_margin), with 2 min debounce so splash / sensor
+    noise does not spam Telegram.
   mode: single
   triggers:
     - trigger: numeric_state
@@ -11,8 +12,8 @@
       for: "00:02:00"
       id: full
     - trigger: numeric_state
-      entity_id: sensor.ultrasonic_waterbutt
-      below: input_number.water_butt_minimum_refill_level
+      entity_id: sensor.water_butt_litres_left
+      above: sensor.water_butt_litres_required_with_margin
       for: "00:02:00"
       id: enough
   conditions: []
@@ -20,10 +21,12 @@
     - action: notify.notifier_telegram_leon
       data:
         message: >-
-          {% set left = states('sensor.water_butt_litres_left') %}
           {% if trigger.id == 'full' %}
-          Water butt is full ({{ left }} L left; level {{ states('sensor.water_butt_level') }}%)
+          Water butt is full ({{ states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L left; level {{ states('sensor.water_butt_level') | float(0) | round(0) | int }}%)
           {% else %}
-          Water butt has enough for next watering ({{ left }} L left; need {{
-          states('sensor.water_butt_litres_required') }} L for current Duration)
+          Water butt has enough for next watering ({{ states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L left; need {{
+          states('sensor.water_butt_litres_required') | float(0) | round(0) | int }} L + {{
+          states('input_number.water_butt_topup_start_margin_percent') | float(15) | round(0) | int
+          }}% margin = {{ states('sensor.water_butt_litres_required_with_margin') | float(0) | round(0) | int
+          }} L for current Duration)
           {% endif %}

@@ -165,13 +165,16 @@ template:
         state: >
           {% set high = states('input_number.water_butt_max_high_level') | float(none) %}
           {% set low = states('input_number.water_butt_max_low_level') | float(none) %}
-          {% set need = states('sensor.water_butt_litres_required') | float(none) %}
+          {% set need = states('sensor.water_butt_litres_required_with_margin') | float(none) %}
+          {% if need is none %}
+            {% set need = states('sensor.water_butt_litres_required') | float(none) %}
+          {% endif %}
           {% set lpcm = states('input_number.water_butt_litres_per_cm') | float(none) %}
           {% set capacity = (low - high) * lpcm if none not in [high, low, lpcm] else none %}
           {% if none in [need, capacity] or capacity == 0 %}
             unavailable
           {% else %}
-            {{ [[(need / capacity * 100), 0] | max, 100] | min | round(0) }}
+            {{ [[(need / capacity * 100), 0] | max, 100] | min | round(0) | int }}
           {% endif %}
 
       - name: "Water Butt Level"
@@ -302,9 +305,9 @@ script:
         data:
           message: >-
             FAULT - water butt distance sensor unavailable for {{
-            states('input_number.water_butt_distance_stale_minutes') | float(15) | round(0)
+            states('input_number.water_butt_distance_stale_minutes') | float(15) | round(0) | int
             }} min while fill valve or pump was ON (state {{
-            states('sensor.ultrasonic_waterbutt') }}). Filling and watering DISABLED.
+            states('sensor.ultrasonic_waterbutt') | float(0) | round(0) | int }}). Filling and watering DISABLED.
             Enable top-up turned OFF. Reminder every hour until the sensor recovers.
 
   water_garden_start:
@@ -349,7 +352,7 @@ script:
             data:
               message: >-
                 Water Garden start blocked - distance sensor unavailable/fault
-                ({{ states('sensor.ultrasonic_waterbutt') }}). Fix the sensor first.
+                ({{ states('sensor.ultrasonic_waterbutt') | float(0) | round(0) | int }}). Fix the sensor first.
           - stop: ""
       - if:
           - condition: numeric_state
@@ -514,7 +517,9 @@ automation:
 
   - id: "1784803698288"
     alias: Water Garden - Water butt is full
-    description: Notify when full or enough for tomorrow, with 2 min debounce.
+    description: >-
+      Notify when full or enough for next watering (litres_left above required
+      with start margin), with 2 min debounce.
     mode: single
     triggers:
       - trigger: numeric_state
@@ -524,7 +529,7 @@ automation:
         id: full
       - trigger: numeric_state
         entity_id: sensor.water_butt_litres_left
-        above: sensor.water_butt_litres_required
+        above: sensor.water_butt_litres_required_with_margin
         for: "00:02:00"
         id: enough
     conditions: []
@@ -532,12 +537,14 @@ automation:
       - action: notify.notifier_telegram_leon
         data:
           message: >-
-            {% set left = states('sensor.water_butt_litres_left') %}
             {% if trigger.id == 'full' %}
-            Water butt is full ({{ left }} L left; level {{ states('sensor.water_butt_level') }}%)
+            Water butt is full ({{ states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L left; level {{ states('sensor.water_butt_level') | float(0) | round(0) | int }}%)
             {% else %}
-            Water butt has enough for next watering ({{ left }} L left; need {{
-            states('sensor.water_butt_litres_required') }} L for current Duration)
+            Water butt has enough for next watering ({{ states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L left; need {{
+            states('sensor.water_butt_litres_required') | float(0) | round(0) | int }} L + {{
+            states('input_number.water_butt_topup_start_margin_percent') | float(15) | round(0) | int
+            }}% margin = {{ states('sensor.water_butt_litres_required_with_margin') | float(0) | round(0) | int
+            }} L for current Duration)
             {% endif %}
 
   - id: water_garden_segment_finished
@@ -739,8 +746,8 @@ automation:
         data:
           message: >-
             REMINDER - water butt distance sensor fault still active (state {{
-            states('sensor.ultrasonic_waterbutt') }}, timeout {{
-            states('input_number.water_butt_distance_stale_minutes') | float(15) | round(0)
+            states('sensor.ultrasonic_waterbutt') | float(0) | round(0) | int }}, timeout {{
+            states('input_number.water_butt_distance_stale_minutes') | float(15) | round(0) | int
             }} min). Filling and watering remain DISABLED until the sensor recovers.
             Re-enable top-up manually after it is healthy.
 
@@ -768,5 +775,5 @@ automation:
         data:
           message: >-
             Water butt distance sensor RECOVERED ({{
-            states('sensor.ultrasonic_waterbutt') }} cm). Watering is allowed again.
+            states('sensor.ultrasonic_waterbutt') | float(0) | round(0) | int }} cm). Watering is allowed again.
             Enable top-up stays OFF until you turn it back on.

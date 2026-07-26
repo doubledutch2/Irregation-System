@@ -1,7 +1,7 @@
 # Water butt staged mains top-up via Sonoff Outside Tap Valve
 # Deployed to /config/packages/water_butt_topup.yaml
 # Burst ~30 min / gap ~3.5 h until truly full after equalisation.
-# Auto-starts when litres_left < litres_required. Watering always pauses top-up.
+# Auto-starts when litres_left < litres_required_with_margin. Watering always pauses top-up.
 
 input_boolean:
   water_butt_topup_enabled:
@@ -180,7 +180,7 @@ template:
           {% if need is none %}
             unavailable
           {% else %}
-            {{ (need * (1 + margin / 100)) | round(0) }}
+            {{ (need * (1 + margin / 100)) | round(0) | int }}
           {% endif %}
 
       - name: "Litres to full"
@@ -197,7 +197,7 @@ template:
           {% if none in [dist, high, lpcm] %}
             unavailable
           {% else %}
-            {{ [((dist - high) * lpcm), 0] | max | round(0) }}
+            {{ [((dist - high) * lpcm), 0] | max | round(0) | int }}
           {% endif %}
 
       - name: "Minutes to full"
@@ -233,7 +233,7 @@ template:
             {% if effective_lph <= 0 %}
               unavailable
             {% else %}
-              {{ [(need / effective_lph * 60), 0] | max | round(0) }}
+              {{ [(need / effective_lph * 60), 0] | max | round(0) | int }}
             {% endif %}
           {% endif %}
         attributes:
@@ -248,7 +248,7 @@ template:
               {% set mm = (m % 60) | int %}
               {% if h > 0 %}{{ h }}h {{ mm }}m{% else %}{{ mm }} min{% endif %}
             {% endif %}
-          remaining_litres: "{{ states('sensor.water_butt_litres_to_full') }}"
+          remaining_litres: "{{ states('sensor.water_butt_litres_to_full') | float(0) | round(0) | int }}"
           assumed_flow_m3h: >
             {% set live = states('sensor.outside_tap_valve_volume_flow_rate') | float(0) %}
             {% set last = states('input_number.water_butt_topup_last_flow_m3h') | float(0) %}
@@ -259,8 +259,8 @@ template:
                and states('sensor.outside_tap_valve_volume_flow_rate') | float(0) > 0 %}
               Using live flow (valve open)
             {% else %}
-              Using burst/gap duty cycle ({{ states('input_number.water_butt_topup_burst_minutes') }}/{{
-              states('input_number.water_butt_topup_gap_minutes') }} min)
+              Using burst/gap duty cycle ({{ states('input_number.water_butt_topup_burst_minutes') | float(0) | round(0) | int }}/{{
+              states('input_number.water_butt_topup_gap_minutes') | float(0) | round(0) | int }} min)
             {% endif %}
 
       # Display-only calibration during / after a fill. Reset when watering starts.
@@ -424,8 +424,8 @@ script:
         data:
           message: >-
             Water butt top-up {{ reason | default('STOP') }}. Level {{
-            states('sensor.water_butt_level') }}%, litres left {{
-            states('sensor.water_butt_litres_left') }} L.
+            states('sensor.water_butt_level') | float(0) | round(0) | int }}%, litres left {{
+            states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L.
 
   water_butt_topup_complete:
     alias: Water butt top-up - Complete
@@ -447,8 +447,8 @@ script:
         data:
           message: >-
             Water butt top-up COMPLETE (truly full after settle). Level {{
-            states('sensor.water_butt_level') }}%, litres left {{
-            states('sensor.water_butt_litres_left') }} L.
+            states('sensor.water_butt_level') | float(0) | round(0) | int }}%, litres left {{
+            states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L.
 
   water_butt_topup_open_burst:
     alias: Water butt top-up - Open burst
@@ -513,9 +513,9 @@ script:
             data:
               message: >-
                 Water butt top-up burst skipped - already at fill margin
-                ({{ states('sensor.ultrasonic_waterbutt') }} cm <= Max High {{
-                states('input_number.water_butt_max_high_level') }} - margin {{
-                states('input_number.water_butt_topup_fill_margin_cm') }}). Settling.
+                ({{ states('sensor.ultrasonic_waterbutt') | float(0) | round(0) | int }} cm <= Max High {{
+                states('input_number.water_butt_max_high_level') | float(0) | round(0) | int }} - margin {{
+                states('input_number.water_butt_topup_fill_margin_cm') | float(0) | round(0) | int }}). Settling.
           - action: script.water_butt_topup_close_to_settle
             data: {}
           - stop: ""
@@ -539,8 +539,8 @@ script:
             data:
               reason: >-
                 SAFETY TRIP - campaign litres {{
-                states('sensor.water_butt_topup_campaign_litres') }} L >= capacity {{
-                states('input_number.water_butt_total_capacity_litres') }} L (top-up disabled)
+                states('sensor.water_butt_topup_campaign_litres') | float(0) | round(0) | int }} L >= capacity {{
+                states('input_number.water_butt_total_capacity_litres') | float(0) | round(0) | int }} L (top-up disabled)
           - stop: ""
       - if:
           - condition: template
@@ -553,8 +553,8 @@ script:
             data:
               reason: >-
                 SAFETY TRIP - max bursts {{
-                states('input_number.water_butt_topup_max_bursts') }} reached
-                ({{ states('input_number.water_butt_topup_campaign_burst_count') }} done;
+                states('input_number.water_butt_topup_max_bursts') | float(0) | round(0) | int }} reached
+                ({{ states('input_number.water_butt_topup_campaign_burst_count') | float(0) | round(0) | int }} done;
                 top-up disabled)
           - stop: ""
       - action: input_number.set_value
@@ -584,9 +584,9 @@ script:
         data:
           message: >-
             Water butt top-up BURST start ({{
-            states('input_number.water_butt_topup_burst_minutes') }} min). Level {{
-            states('sensor.water_butt_level') }}%, litres left {{
-            states('sensor.water_butt_litres_left') }} L.
+            states('input_number.water_butt_topup_burst_minutes') | float(0) | round(0) | int }} min). Level {{
+            states('sensor.water_butt_level') | float(0) | round(0) | int }}%, litres left {{
+            states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L.
 
   water_butt_topup_close_to_settle:
     alias: Water butt top-up - Close to settle
@@ -612,9 +612,9 @@ script:
         data:
           message: >-
             Water butt top-up burst DONE. Settling / gap {{
-            states('input_number.water_butt_topup_gap_minutes') }} min. Level {{
-            states('sensor.water_butt_level') }}%, litres left {{
-            states('sensor.water_butt_litres_left') }} L.
+            states('input_number.water_butt_topup_gap_minutes') | float(0) | round(0) | int }} min. Level {{
+            states('sensor.water_butt_level') | float(0) | round(0) | int }}%, litres left {{
+            states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L.
 
   water_butt_topup_pause_for_watering:
     alias: Water butt top-up - Pause for watering
@@ -720,7 +720,7 @@ script:
             data:
               message: >-
                 Water butt top-up start blocked - distance sensor unavailable/stale
-                ({{ states('sensor.ultrasonic_waterbutt') }}).
+                ({{ states('sensor.ultrasonic_waterbutt') | float(0) | round(0) | int }}).
           - stop: ""
       - if:
           - condition: not
@@ -787,10 +787,13 @@ script:
         data:
           message: >-
             Water butt top-up CAMPAIGN start (not enough for next watering:
-            {{ states('sensor.water_butt_litres_left') }} L left, need {{
-            states('sensor.water_butt_litres_required') }} L). Safety budget {{
-            states('input_number.water_butt_total_capacity_litres') }} L / max {{
-            states('input_number.water_butt_topup_max_bursts') }} bursts.
+            {{ states('sensor.water_butt_litres_left') | float(0) | round(0) | int }} L left, need {{
+            states('sensor.water_butt_litres_required') | float(0) | round(0) | int }} L + {{
+            states('input_number.water_butt_topup_start_margin_percent') | float(15) | round(0) | int
+            }}% margin = {{ states('sensor.water_butt_litres_required_with_margin') | float(0) | round(0) | int
+            }} L). Safety budget {{
+            states('input_number.water_butt_total_capacity_litres') | float(0) | round(0) | int }} L / max {{
+            states('input_number.water_butt_topup_max_bursts') | float(0) | round(0) | int }} bursts.
       - action: script.water_butt_topup_open_burst
         data: {}
 
@@ -947,8 +950,8 @@ automation:
         data:
           reason: >-
             SAFETY TRIP - campaign litres {{
-            states('sensor.water_butt_topup_campaign_litres') }} L >= capacity {{
-            states('input_number.water_butt_total_capacity_litres') }} L (top-up disabled)
+            states('sensor.water_butt_topup_campaign_litres') | float(0) | round(0) | int }} L >= capacity {{
+            states('input_number.water_butt_total_capacity_litres') | float(0) | round(0) | int }} L (top-up disabled)
 
   - id: water_butt_topup_auto_start
     alias: Water butt top-up - Auto start when not enough
@@ -1321,7 +1324,7 @@ automation:
         data:
           message: >-
             Outside Tap Valve battery LOW: {{
-            states('sensor.outside_tap_valve_battery') | float(0) | round(0)
+            states('sensor.outside_tap_valve_battery') | float(0) | round(0) | int
             }}% (threshold {{
-            states('input_number.water_butt_topup_battery_low_percent') | float(20) | round(0)
+            states('input_number.water_butt_topup_battery_low_percent') | float(20) | round(0) | int
             }}%). Replace batteries. Reminder every 6h until fixed.

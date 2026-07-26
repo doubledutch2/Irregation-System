@@ -88,7 +88,7 @@ No Home Assistant persistent/bell notifications for Water Garden (Telegram only)
 |------|------------------|-------------------|------|
 | Heading | - | Water Butt Gauge | Section title |
 | Gauge | `sensor.water_butt_level` | Water Butt Level | Fill % of usable range (0-100) |
-| Markdown alert | compares `sensor.water_butt_level` to `sensor.water_butt_minimum_refill` | (under gauge) | Red if not enough to water; green if enough |
+| Markdown alert | compares `sensor.water_butt_level` to `sensor.water_butt_minimum_refill` | (under gauge) | Red if below required-with-margin; green if enough |
 | Entities | `sensor.water_butt_litres_left` | Litres left | Usable litres remaining |
 | Entities | `sensor.water_butt_litres_required` | Litres required for garden | Calculated: `(red x 2 + black x 4) x Duration/60` |
 | Entities (optional) | `sensor.water_garden_flow` | Flow | Calculated L/h from dripper counts |
@@ -168,15 +168,29 @@ New tiles only (paste one card at a time, no leading `-`): [`yaml/dashboard_card
 
 **Behaviour:** when Enable top-up is ON and butts need water (see triggers below), HA opens the tap in bursts until the butts are **truly full** after a gap (distance still at/under Max High + 1 cm). Watering always wins: top-up pauses (valve closed) while a watering sequence runs, then resumes.
 
+**Start margin (shared threshold):** `sensor.water_butt_litres_required_with_margin` = `litres_required x (1 + start_margin_% / 100)` (default margin **15%**). Example at 68 red + 31 black, Duration 60: required **260 L**, with margin **299 L**. Used for:
+
+- Auto top-up start / `binary_sensor.water_butt_needs_topup`
+- Enable ON / 15-minute safety-net re-check
+- Resume-after-watering auto start
+- "Enough for next watering" Telegram (fires only when litres_left stays **above** this threshold for 2 min)
+- Gauge **minimum refill %** (red/green "enough" banner)
+
+Raw `sensor.water_butt_litres_required` remains the watering formula (session expected litres, dripper maths). Telegram texts that talk about "need" show both: `need 260 L + 15% margin = 299 L`.
+
 **Fill session (calibration, display only):** at each campaign start HA stores valve litres + ultrasonic cm. Tiles show valve litres added, cm height gained, and average L/cm. Nothing automates from these. They reset when a watering sequence starts.
 
 **Distance sensor fault:** while the **Outside Tap Valve is ON** or the **pump is ON**, if `sensor.ultrasonic_waterbutt` stays unavailable for **Distance stale after** minutes (default 15), HA aborts watering/filling and turns **Enable top-up OFF**. Idle / stable levels are ignored (unchanged cm often does not refresh HA). Fault is latched (`input_boolean.water_butt_distance_fault`) until the sensor reports again (hourly Telegram while latched).
 
-**Safety budget:** each campaign may add at most **Butt capacity** litres through the valve (and at most **max bursts**). Exceeding either closes the valve, ends the campaign, and turns **Enable top-up OFF** (Telegram). Turn Enable back ON only after you have checked for leaks / sensor faults.
+**Safety budget:** each campaign may add at most **Butt capacity** litres through the valve (and at most **max bursts**). Exceeding either closes the valve, ends the campaign, and turns **Enable top-up OFF** (Telegram). Turn Enable back ON only after you have checked for leaks / sensor faults. Valve open longer than **35 min** also safety-trips.
 
 **HA restart:** Outside Tap Valve is always forced OFF on start (never left open). If phase was `burst`, HA starts a settling gap and continues the campaign. Settling/paused resume from restored phase + timer (`restore: true`).
 
 **SWV notes:** LED does not stay lit while open (battery saving - brief flash only). Keep **Water shortage auto-close** OFF. Do not use `binary_sensor.outside_tap_valve_water_supply` for control on this install.
+
+**Telegram number format:** whole numbers only for litres, %, cm, minutes, bursts, budget, and margin in top-up / distance-fault messages (and `sensor.water_butt_litres_required_with_margin` on the dashboard).
+
+**State machine:** phase is `input_select.water_butt_topup_phase` (`idle` / `burst` / `settling` / `paused`). Transitions are scripts + automations (timer finished, early margin, watering pause/resume, safety, HA recover) - the normal HA pattern for a state machine.
 
 ### How top-up is triggered (logic)
 
@@ -185,13 +199,12 @@ New tiles only (paste one card at a time, no leading `-`): [`yaml/dashboard_card
    - Level has needed water for **2 minutes** -> start (phase must be `idle`)
    - **Enable top-up** turned ON -> start **immediately** if already needing water (also breaks out of a settle gap)
    - Every **15 minutes** -> safety-net re-check while still needing water and idle
-   - Threshold = `litres_required x (1 + start_margin_% / 100)` (default margin **15%**).
    - The needs-top-up binary is **re-evaluated every minute** (and on litre/threshold changes), so a stable low level still counts.
 3. **Manual start:** **Top-up now** (`input_button.water_butt_topup_now`) while idle -> same start script (Enable must still be ON).
 4. **Campaign loop:** open valve for **burst** minutes (or early-close / skip-open if already at Max High minus fill margin) -> close for **gap** minutes (equalise / pace water company) -> if still not truly full (distance > Max High + 1 cm), open another burst. Ends when truly full after a settle, or on safety trip / disable.
 5. **Watering priority:** if watering is active, campaign goes `paused` (valve closed) and resumes when watering returns to `idle`.
 6. **Also starts after watering** if Enable is ON, phase idle, and litres still below the margin threshold (checked once when watering becomes idle - no 2 min wait).
-
+7. **"Enough" Telegram** (separate watering package automation): when litres_left stays **above** required-with-margin for 2 min (or butts hit Max High).
 ### Adding these in the UI
 
 1. Restart HA if the package was just deployed (so new entities exist).
@@ -388,7 +401,7 @@ Distance = **cm from top sensor to water** (larger cm = lower water).
 | **Water Garden Start** | `1784746590314` | Legacy button: idle -> start, else stop | [`automation_water_garden_start.yaml`](yaml/automation_water_garden_start.yaml) |
 | **Water Garden - Stop** | `1784825343018` | Pump OFF only while `first_half` or `second_half` -> stop script (avoids double notify on planned half ends) | [`automation_water_garden_stop.yaml`](yaml/automation_water_garden_stop.yaml) |
 | **Water Garden - Pump is on but Water is too low** | `1784745405904` | Distance above Max Low during a watering half -> stop with reason (sensor trigger, not /5 poll) | [`automation_water_garden_pump_on_water_too_low.yaml`](yaml/automation_water_garden_pump_on_water_too_low.yaml) |
-| **Water Garden - Water butt is full** | `1784803698288` | Full / enough Telegram with **2 minute** `for` debounce | [`automation_water_garden_water_butt_full.yaml`](yaml/automation_water_garden_water_butt_full.yaml) |
+| **Water Garden - Water butt is full** | `1784803698288` | Full / enough Telegram; enough = litres_left above **required-with-margin**; **2 minute** debounce | [`automation_water_garden_water_butt_full.yaml`](yaml/automation_water_garden_water_butt_full.yaml) |
 | **Water Garden - Stop after 1 hour** | `1784744462305` | **Delete/disable** - conflicts with duration helper | [`automation_water_garden_stop_after_1_hour.yaml`](yaml/automation_water_garden_stop_after_1_hour.yaml) |
 
 ### Why the old stop loop is fixed
@@ -413,13 +426,15 @@ Full view: [`dashboard_garden_water_butts.yaml`](yaml/dashboard_garden_water_but
 
 1. **Stop notify loop** - fixed by phase-gated stop automation + phase-before-switch in segment finished.
 2. **Low-water trigger** - fixed: `numeric_state` on ultrasonic, only while watering halves (no 5-minute poll). With 30 s ESPHome updates this reacts within about one reading.
-3. **Full/enough debounce** - fixed: `for: 00:02:00`.
+3. **Full/enough debounce** - fixed: `for: 00:02:00`. Enough uses **required-with-margin**, not raw litres_required.
 4. **Pre-start dry guard** - in start script (blocks + Telegram).
 5. **Schedule / rain skip** - deferred (not wanted yet).
 6. **Pump entity name** - left as `switch.study_water_pump`.
 7. **OTA password** - consider `!secret` in ESPHome; functionality unchanged.
+8. **Distance watchdog** - only while valve or pump ON; trip on unavailable (not stable unchanged cm).
+9. **SWV water_supply** - ignored for control on this install; keep water-shortage auto-close OFF.
 
-**Calibration tip:** after each half Telegram, compare litres left drop to expected half-run use (about half of ~260 L at 68 red + 31 black for Duration 60 - ~130 L per half). Adjust `litres_per_cm` and level helpers until the numbers make sense.
+**Calibration tip:** after each half Telegram, compare litres left drop to expected half-run use (about half of ~260 L at 68 red + 31 black for Duration 60 - ~130 L per half). Adjust `litres_per_cm` and level helpers until the numbers make sense. During mains fill, compare **Fill session L/cm** to the litre/cm helper.
 
 ---
 
@@ -443,6 +458,9 @@ Full view: [`dashboard_garden_water_butts.yaml`](yaml/dashboard_garden_water_but
 | 2026-07-26 | Distance watchdog only while valve/pump on; trip on unavailable (not unchanged cm) | `package_water_garden.yaml` |
 | 2026-07-26 | Enable ON starts immediately if needs water; settle-gap breakout; skip open if already at fill margin | `package_water_butt_topup.yaml` |
 | 2026-07-26 | Docs: SWV LED / water_supply / shortage auto-close; restart recover; paste-friendly dashboard cards | `Home Assistant.md`, `dashboard_cards_topup_new.yaml` |
+| 2026-07-26 | Enough-for-watering notify/trigger uses required-with-margin; gauge minimum refill % too | `package_water_garden.yaml` |
+| 2026-07-26 | Telegram + margin sensor whole numbers; campaign/enough messages show need + margin | `package_water_butt_topup.yaml`, `package_water_garden.yaml` |
+| 2026-07-26 | Docs pass: start margin shared uses, state machine, formatting, SWV/restart notes | `Home Assistant.md` |
 
 ---
 
